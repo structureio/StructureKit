@@ -1,4 +1,4 @@
-// swift-tools-version: 5.8
+// swift-tools-version: 5.5
 //
 // StructureKit - A collection of extension utilities for Structure SDK
 // Copyright 2022 XRPro, LLC. All rights reserved.
