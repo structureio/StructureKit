@@ -31,7 +31,7 @@ import MetalKit
 import StructureKitCTypes
 
 // Draws colored lines in the world coordinate system
-class STKLineRenderer {
+public class STKLineRenderer {
   private var renderLineState: MTLRenderPipelineState!
   private var vertexCubeBuffer: MTLBuffer!
   private var indexCubeBuffer: MTLBuffer!
@@ -52,7 +52,7 @@ class STKLineRenderer {
     simd_float4(0, 1, 1, 1),
   ]
 
-  init(view: MTKView, device: MTLDevice) {
+  public init(view: MTKView, device: MTLDevice) {
     mtkView = view
     let library = STKMetalLibLoader.load(device: device)
     let pipelineCubeDescriptor = MTLRenderPipelineDescriptor()
@@ -106,7 +106,7 @@ class STKLineRenderer {
       bytes: triadIndices, length: MemoryLayout<UInt32>.stride * triadIndices.count, options: [])!
   }
 
-  func renderCubeOutline(
+  public func renderCubeOutline(
     _ commandEncoder: MTLRenderCommandEncoder,
     volumeSizeInMeters: simd_float3,
     cameraPosition: float4x4,
@@ -141,7 +141,7 @@ class STKLineRenderer {
     )
   }
 
-  func renderAnchors(
+  public func renderAnchors(
     _ commandEncoder: MTLRenderCommandEncoder,
     anchors: [simd_float4x4],
     cameraPosition: float4x4,

@@ -367,7 +367,7 @@ public class STKMeshRendererTexture: STKShader {
 }
 
 // Renders a mesh in grayscale, uses the mesh normals to calculate light
-class STKMeshRendererPoints: STKShader {
+public class STKMeshRendererPoints: STKShader {
   private var depthStencilState: MTLDepthStencilState
   private var pipelineState: MTLRenderPipelineState
 

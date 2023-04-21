@@ -31,12 +31,12 @@ import MetalKit
 import StructureKitCTypes
 
 // Draws an ARKit face geometry as a white transparent mesh
-class STKARKitOverlayRenderer {
+public class STKARKitOverlayRenderer {
   var arkitToWorld = simd_float4x4()
   private var depthStencilARKitState: MTLDepthStencilState
   private var renderARKitState: MTLRenderPipelineState
 
-  init(view: MTKView, device: MTLDevice) {
+  public init(view: MTKView, device: MTLDevice) {
     let depthStencilDescriptor = MTLDepthStencilDescriptor()
     depthStencilDescriptor.depthCompareFunction = .less
     depthStencilDescriptor.isDepthWriteEnabled = true
@@ -65,7 +65,7 @@ class STKARKitOverlayRenderer {
     renderARKitState = try! device.makeRenderPipelineState(descriptor: pipelineMeshDescriptor)
   }
 
-  func renderARkitGeom(
+  public func renderARkitGeom(
     _ commandEncoder: MTLRenderCommandEncoder,
     mesh: STKDrawableObject,
     cameraPosition: float4x4,

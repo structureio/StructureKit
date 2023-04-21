@@ -34,7 +34,7 @@ import StructureKitCTypes
 // 1. the depth frame
 // 2. the cube
 // 3. the depth overlay inside the cube
-class STKDepthRenderer {
+public class STKDepthRenderer {
   private var mtkView: MTKView
   private var renderDepthState: MTLRenderPipelineState
   private var renderDepthFrameState: MTLRenderPipelineState
@@ -53,7 +53,7 @@ class STKDepthRenderer {
   private var _vertexCubeBuffer: MTLBuffer!
   private var _indexCubeBuffer: MTLBuffer!
 
-  init(view: MTKView, device: MTLDevice) {
+  public init(view: MTKView, device: MTLDevice) {
     mtkView = view
     self.device = device
 
@@ -154,7 +154,7 @@ class STKDepthRenderer {
     textureColor?.replace(region: region, mipmapLevel: 0, withBytes: &depthRenderingColors, bytesPerRow: bytesPerRow)
   }
 
-  func uploadColorTextureFromDepth(_ depthFrame: STKDepthFrame) {
+  public func uploadColorTextureFromDepth(_ depthFrame: STKDepthFrame) {
     if let texture = textureDepth {
       if texture.width != depthFrame.width || texture.height != depthFrame.height {
         textureDepth = nil  // invalidate texture
@@ -178,7 +178,7 @@ class STKDepthRenderer {
     textureDepth?.replace(region: region, mipmapLevel: 0, withBytes: depthMap!, bytesPerRow: bytesPerRow)
   }
 
-  func renderDepthOverlay(
+  public func renderDepthOverlay(
     _ commandEncoder: MTLRenderCommandEncoder,
     volumeSizeInMeters: simd_float3,
     cameraPosition: float4x4,
@@ -228,7 +228,7 @@ class STKDepthRenderer {
     commandEncoder.popDebugGroup()
   }
 
-  func renderDepthFrame(
+  public func renderDepthFrame(
     _ commandEncoder: MTLRenderCommandEncoder,
     orientation: float4x4,
     minDepth: Float,
@@ -257,7 +257,7 @@ class STKDepthRenderer {
 
   }
 
-  func renderCubeOutline(
+  public func renderCubeOutline(
     _ commandEncoder: MTLRenderCommandEncoder,
     volumeSizeInMeters: simd_float3,
     cameraPosition: float4x4,

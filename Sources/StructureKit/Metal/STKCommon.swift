@@ -35,21 +35,23 @@ import StructureKitCTypes
 extension String: Error {}
 
 public class STKShaderManager {
-  static let pixelFormat = MTLPixelFormat.bgra8Unorm
-  static let depthFormat = MTLPixelFormat.depth32Float
-  static let device = MTLCreateSystemDefaultDevice()!
+  public static let pixelFormat = MTLPixelFormat.bgra8Unorm
+  public static let depthFormat = MTLPixelFormat.depth32Float
+  public static let device = MTLCreateSystemDefaultDevice()!
 
-  static let solid = STKMeshRendererSolid(colorFormat: pixelFormat, depthFormat: depthFormat, device: device)
-  static let wireframe = STKMeshRendererWireframe(colorFormat: pixelFormat, depthFormat: depthFormat, device: device)
-  static let vertexColor = STKMeshRendererColor(colorFormat: pixelFormat, depthFormat: depthFormat, device: device)
-  static let textureShader = STKMeshRendererTexture(colorFormat: pixelFormat, depthFormat: depthFormat, device: device)
-  static let pointCloud = STKMeshRendererPoints(colorFormat: pixelFormat, depthFormat: depthFormat, device: device)
-  static let lines = STKMeshRendererLines(colorFormat: pixelFormat, depthFormat: depthFormat, device: device)
+  public static let solid = STKMeshRendererSolid(colorFormat: pixelFormat, depthFormat: depthFormat, device: device)
+  public static let wireframe = STKMeshRendererWireframe(
+    colorFormat: pixelFormat, depthFormat: depthFormat, device: device)
+  public static let vertexColor = STKMeshRendererColor(
+    colorFormat: pixelFormat, depthFormat: depthFormat, device: device)
+  public static let textureShader = STKMeshRendererTexture(
+    colorFormat: pixelFormat, depthFormat: depthFormat, device: device)
+  public static let pointCloud = STKMeshRendererPoints(
+    colorFormat: pixelFormat, depthFormat: depthFormat, device: device)
+  public static let lines = STKMeshRendererLines(colorFormat: pixelFormat, depthFormat: depthFormat, device: device)
 }
 
 extension float4x4 {
-  public init() { self = float4x4.identity() }
-
   public init(_ m: GLKMatrix4) { self = unsafeBitCast(m, to: float4x4.self) }
 
   public func toGLK() -> GLKMatrix4 { SCNMatrix4ToGLKMatrix4(SCNMatrix4(self)) }
