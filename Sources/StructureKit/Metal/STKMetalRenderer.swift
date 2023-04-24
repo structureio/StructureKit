@@ -154,8 +154,8 @@ public class STKMetalRenderer: NSObject, STKRenderer {
   private var _arkitMesh: STKMeshBuffers
   private var _anchors: [simd_float4x4] = []
   private var _volumeSize = simd_float3(1, 1, 1)
-  private var colorCameraGLProjectionMatrix = float4x4()
-  private var depthCameraGLProjectionMatrix = float4x4()
+  private var colorCameraGLProjectionMatrix = float4x4.identity
+  private var depthCameraGLProjectionMatrix = float4x4.identity
 
   // metal general
   private var _mtkView: MTKView
@@ -297,7 +297,7 @@ public class STKMetalRenderer: NSObject, STKRenderer {
     if drawTriad {
       _anchorRenderer.renderAnchors(
         commandEncoder,
-        anchors: [simd_float4x4()],
+        anchors: [simd_float4x4.identity],
         cameraPosition: cameraPose,
         projection: projection,
         orientation: orientation,

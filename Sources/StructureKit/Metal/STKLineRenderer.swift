@@ -37,8 +37,8 @@ public class STKLineRenderer {
   private var indexCubeBuffer: MTLBuffer!
   private var indexTriadBuffer: MTLBuffer!
   private var mtkView: MTKView
-  var colorCameraGLProjectionMatrix = float4x4()
-  var depthCameraGLProjectionMatrix = float4x4()
+  var colorCameraGLProjectionMatrix = float4x4.identity
+  var depthCameraGLProjectionMatrix = float4x4.identity
 
   private let cubeVertices4: [simd_float4] = [
     simd_float4(0, 0, 0, 1),
@@ -133,7 +133,7 @@ public class STKLineRenderer {
 
     renderAnchors(
       commandEncoder,
-      anchors: [simd_float4x4()],
+      anchors: [simd_float4x4.identity],
       cameraPosition: cameraPosition,
       projection: projection,
       orientation: orientation,

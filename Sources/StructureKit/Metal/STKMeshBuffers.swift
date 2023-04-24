@@ -217,7 +217,7 @@ public class STKMeshBuffers: STKDrawableObject {
 
   public func textureCbCr() -> MTLTexture? { textureCbCrinternal }
 
-  public func modelMatrix() -> float4x4 { float4x4() }
+  public func modelMatrix() -> float4x4 { float4x4.identity }
 
   public func vertexCount() -> Int { nVertex }
 

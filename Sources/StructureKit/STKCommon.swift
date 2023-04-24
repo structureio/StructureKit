@@ -34,23 +34,6 @@ import StructureKitCTypes
 
 extension String: Error {}
 
-public class STKShaderManager {
-  public static let pixelFormat = MTLPixelFormat.bgra8Unorm
-  public static let depthFormat = MTLPixelFormat.depth32Float
-  public static let device = MTLCreateSystemDefaultDevice()!
-
-  public static let solid = STKMeshRendererSolid(colorFormat: pixelFormat, depthFormat: depthFormat, device: device)
-  public static let wireframe = STKMeshRendererWireframe(
-    colorFormat: pixelFormat, depthFormat: depthFormat, device: device)
-  public static let vertexColor = STKMeshRendererColor(
-    colorFormat: pixelFormat, depthFormat: depthFormat, device: device)
-  public static let textureShader = STKMeshRendererTexture(
-    colorFormat: pixelFormat, depthFormat: depthFormat, device: device)
-  public static let pointCloud = STKMeshRendererPoints(
-    colorFormat: pixelFormat, depthFormat: depthFormat, device: device)
-  public static let lines = STKMeshRendererLines(colorFormat: pixelFormat, depthFormat: depthFormat, device: device)
-}
-
 extension float4x4 {
   public init(_ m: GLKMatrix4) { self = unsafeBitCast(m, to: float4x4.self) }
 
@@ -61,7 +44,7 @@ extension float4x4 {
     return self
   }
 
-  public static func identity() -> float4x4 { unsafeBitCast(GLKMatrix4Identity, to: float4x4.self) }
+  public static var identity: float4x4 { unsafeBitCast(GLKMatrix4Identity, to: float4x4.self) }
 
   public static func makeTranslation(_ vec: vector_float3) -> float4x4 {
     unsafeBitCast(GLKMatrix4MakeTranslation(vec.x, vec.y, vec.z), to: float4x4.self)
@@ -107,6 +90,8 @@ extension float4x4 {
 }
 
 extension float3x3 {
+  public static var identity: float3x3 { unsafeBitCast(GLKMatrix3Identity, to: float3x3.self) }
+
   public static func makeRotationZ(_ radians: Float) -> float3x3 {
     float3x3([
       simd_float3(cos(radians), -sin(radians), 0), simd_float3(sin(radians), cos(radians), 0), simd_float3(0, 0, 1),
@@ -231,7 +216,7 @@ public func makeDepthStencilState(_ device: MTLDevice) -> MTLDepthStencilState {
   depthStencilDescriptor.depthCompareFunction = .less
   depthStencilDescriptor.isDepthWriteEnabled = true
   return device.makeDepthStencilState(descriptor: depthStencilDescriptor)!
-}
+} 
 
 public func makePipeline(
   _ device: MTLDevice,

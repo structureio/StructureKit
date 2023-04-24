@@ -32,7 +32,7 @@ import StructureKitCTypes
 
 // Draws an ARKit face geometry as a white transparent mesh
 public class STKARKitOverlayRenderer {
-  var arkitToWorld = simd_float4x4()
+  var arkitToWorld = simd_float4x4.identity
   private var depthStencilARKitState: MTLDepthStencilState
   private var renderARKitState: MTLRenderPipelineState
 

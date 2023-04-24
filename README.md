@@ -9,7 +9,7 @@ You can consume it as a Swift Package:
 ## Usage
 Import into your Swift source code:
 ```swift
-import StructurKit
+import StructureKit
 ```
 
 ### Integration with Structure SDK
