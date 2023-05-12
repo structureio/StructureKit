@@ -41,7 +41,7 @@ public protocol STKShader {
 
 // Renders a mesh as a solid body, in grayscale by default, uses the mesh normals to calculate light
 public class STKMeshRendererSolid: STKShader {
-  private var depthStencilState: MTLDepthStencilState
+  var depthStencilState: MTLDepthStencilState
   private var pipelineState: MTLRenderPipelineState
 
   public init(colorFormat: MTLPixelFormat, depthFormat: MTLPixelFormat, device: MTLDevice) {
@@ -165,7 +165,8 @@ public class STKMeshRendererWireframe: STKShader {
     worldModelMatrix: float4x4,
     projectionMatrix: float4x4,
     useXray: Bool = true,
-    color: vector_float4 = vector_float4(1, 1, 1, 1)
+    color: vector_float4 = vector_float4(1, 1, 1, 1),
+    hideBackFaces: Bool = false
   ) {
     guard node.vertexType is GLKVector3,
       node.indexType is UInt32
@@ -179,9 +180,20 @@ public class STKMeshRendererWireframe: STKShader {
       let normalsBuffer = node.normals()
     else { return }
 
+    let solid = STKShaderManager.solid
+    if hideBackFaces {
+      // use solid shader to fill the depth buffer where necessary
+      commandEncoder.setDepthBias(0.01, slopeScale: 1.0, clamp: 0.01)
+      solid.render(commandEncoder, node: node, worldModelMatrix: worldModelMatrix, projectionMatrix: projectionMatrix, color: vector_float4(0, 0, 0, 0))
+      commandEncoder.setDepthBias(0, slopeScale: 0, clamp: 0)
+    }
+    
     commandEncoder.pushDebugGroup("RenderMeshXray")
+    if hideBackFaces {
+      commandEncoder.setDepthStencilState(solid.depthStencilState)
+    }
     commandEncoder.setRenderPipelineState(pipelineState)
-
+    
     // set buffers
     commandEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: Int(STKVertexAttrPosition.rawValue))
     commandEncoder.setVertexBuffer(normalsBuffer, offset: 0, index: Int(STKVertexAttrAddition.rawValue))
