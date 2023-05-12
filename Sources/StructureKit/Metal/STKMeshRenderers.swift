@@ -591,3 +591,78 @@ public class STKScanMeshRenderer {
   }
 
 }
+
+public class STKMeshRendererThickLines: STKShader{
+  private var depthStencilState: MTLDepthStencilState
+  private var pipelineState: MTLRenderPipelineState
+  
+  init(colorFormat: MTLPixelFormat, depthFormat: MTLPixelFormat, device: MTLDevice) {
+    depthStencilState = makeDepthStencilState(device)
+    
+    let vertexDescriptor = MTLVertexDescriptor()
+    vertexDescriptor.attributes[0] = MTLVertexAttributeDescriptor(bufferIndex: 0, offset: 0, format: .float3) // vertices
+    vertexDescriptor.attributes[1] = MTLVertexAttributeDescriptor(bufferIndex: Int(STKVertexAttrAddition.rawValue), offset: 0, format: .float3) // colors
+    vertexDescriptor.layouts[0].stride = MemoryLayout<vector_float3>.stride
+    vertexDescriptor.layouts[1].stride = MemoryLayout<vector_float3>.stride
+    
+    pipelineState = makePipeline(
+      device,
+      "vertexThickLine",
+      "fragmentThickLine",
+      vertexDescriptor,
+      colorFormat,
+      depthFormat,
+      blending: false)
+  }
+  
+  convenience init(view: MTKView, device: MTLDevice) {
+    self.init(colorFormat: view.colorPixelFormat, depthFormat: view.depthStencilPixelFormat, device: device)
+  }
+  
+  public func render(_ commandEncoder: MTLRenderCommandEncoder,
+              node: STKDrawableObject,
+              worldModelMatrix: float4x4,
+              projectionMatrix: float4x4
+  ) {
+    guard node.vertexType is vector_float3,
+          node.indexType is UInt32
+    else {
+      assertionFailure("Type mismatch")
+      return
+    }
+    
+    guard let vertexBuffer = node.vertices(),
+          let colorsBuffer = node.colors(),
+          let indexBuffer = node.indices(),
+          let lineDir = node.normals(),
+          node.triangleCount() > 0
+    else { return }
+    
+    commandEncoder.pushDebugGroup("RenderThickLines")
+    commandEncoder.setRenderPipelineState(pipelineState)
+    commandEncoder.setDepthStencilState(depthStencilState)
+    commandEncoder.setCullMode(MTLCullMode.none)
+
+    commandEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: Int(STKVertexAttrPosition.rawValue))
+    commandEncoder.setVertexBuffer(colorsBuffer, offset: 0, index: Int(STKVertexAttrAddition.rawValue))
+    commandEncoder.setVertexBuffer(lineDir, offset: 0, index: 3)
+    
+    // set uniforms
+    let indexCount = node.triangleCount()
+    let nodeModelMatrix = worldModelMatrix * node.modelMatrix()
+    var uniforms = STKUniformsThickLine(modelViewMatrix: nodeModelMatrix, projectionMatrix: projectionMatrix, color: vector_float4(1,1,1,1), width: 5
+    )
+    commandEncoder.setVertexBytes(&uniforms, length: MemoryLayout<STKUniformsThickLine>.stride, index: Int(STKVertexBufferIndexUniforms.rawValue))
+  
+    // commandEncoder.setDepthBias(-1, slopeScale: 0, clamp: 0)
+    commandEncoder.drawIndexedPrimitives(
+      type: .triangleStrip,
+      indexCount: indexCount,
+      indexType: .uint32,
+      indexBuffer: indexBuffer,
+      indexBufferOffset: 0)
+    // commandEncoder.setDepthBias(0, slopeScale: 0, clamp: 0)
+    
+    commandEncoder.popDebugGroup()
+  }
+}

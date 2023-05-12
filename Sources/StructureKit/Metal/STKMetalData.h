@@ -104,6 +104,13 @@ struct STKUniformsMeshWireframe
     bool useXray;
 };
 
+struct STKUniformsThickLine {
+  matrix_float4x4 modelViewMatrix;
+  matrix_float4x4 projectionMatrix;
+  vector_float4 color;
+  float width;
+};
+
 struct STKVertexTex
 {
     vector_float3 position;

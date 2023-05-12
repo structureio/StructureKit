@@ -265,3 +265,52 @@ extension STKMeshBuffers {
   }
 
 }
+
+extension STKMeshBuffers {
+  func update(thickLine: [vector_float3], colors: [vector_float3]) {
+    clear()
+    
+    vertexType = vector_float3()
+    indexType = UInt32()
+    
+    guard thickLine.count > 1 else { return }
+    
+    // vertices: for every point (.) generate 4 vertices with offset for the previous and the next line segments,
+    // see the diagram below:
+    //   /
+    // --\--|  /
+    //    \ . /
+    // ----\|/
+    let vertices: [vector_float3] = thickLine.flatMap { p in [p, p, p, p] }
+    nVertex = vertices.count
+    vertexBuffer = device.makeBuffer(bytes: vertices, length: vertices.count * MemoryLayout<vector_float3>.stride, options: [])
+    
+    // use normals buffers for line directions..
+    var lineDir: [vector_float3] = []
+    for i in 0..<thickLine.count - 1 {
+      lineDir.append(thickLine[i+1] - thickLine[i]);
+    }
+    lineDir.append(thickLine[thickLine.count - 1] - thickLine[thickLine.count - 2]);
+    lineDir = lineDir.flatMap { p in [p, p, p, p] }
+    
+    for i in 1..<thickLine.count - 1 {
+      lineDir[i*4+0] = lineDir[(i-1)*4+2];
+      lineDir[i*4+1] = lineDir[(i-1)*4+3];
+    }
+    
+    normalBuffer = device.makeBuffer(bytes: lineDir, length: lineDir.count * MemoryLayout<vector_float3>.stride, options: [])
+    
+    // colors
+    if colors.count == thickLine.count {
+      let _colors: [vector_float3] = colors.flatMap { p in [p, p, p, p] }
+      colorBuffer = device.makeBuffer(bytes: _colors, length: _colors.count * MemoryLayout<vector_float3>.stride, options: [])
+    }
+    
+    // indices
+    let indices = Array((0..<UInt32(vertices.count)))
+    
+    nTriangle = indices.count
+    indexBuffer = device.makeBuffer(bytes: indices, length: indices.count * MemoryLayout<UInt32>.stride, options: [])
+  }
+  
+}
