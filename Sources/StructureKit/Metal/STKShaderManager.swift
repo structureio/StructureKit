@@ -43,6 +43,7 @@ public class STKShaderManager {
   public static let pointCloud = STKMeshRendererPoints(
     colorFormat: pixelFormat, depthFormat: depthFormat, device: device)
   public static let lines = STKMeshRendererLines(colorFormat: pixelFormat, depthFormat: depthFormat, device: device)
-  public static let thickLine = STKMeshRendererThickLines(colorFormat: pixelFormat, depthFormat: depthFormat, device: device)
-  
+  public static let thickLine = STKMeshRendererThickLines(
+    colorFormat: pixelFormat, depthFormat: depthFormat, device: device)
+
 }
