@@ -216,7 +216,7 @@ public func makeDepthStencilState(_ device: MTLDevice) -> MTLDepthStencilState {
   depthStencilDescriptor.depthCompareFunction = .less
   depthStencilDescriptor.isDepthWriteEnabled = true
   return device.makeDepthStencilState(descriptor: depthStencilDescriptor)!
-} 
+}
 
 public func makePipeline(
   _ device: MTLDevice,
