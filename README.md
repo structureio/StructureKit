@@ -15,7 +15,7 @@ import StructureKit
 ### Integration with Structure SDK
 StructureKit based on Structure SDK - compatible interfaces.
 
-Current version is compatible with Structure SDK `2.*`
+Current version is compatible with Structure SDK `2.*` and `3.*`.
 
 To seamlessly use Structure SDK types together with StructureKit, add the following code in your project:
 
