@@ -80,7 +80,7 @@ fragment float4 fragmentDepthOverlay(
     //    return float4(0, 1, 0, uniforms.alpha);
 
     // outside the box
-    if (cubePoint.x < 0 || cubePoint.x > 1 || cubePoint.y < 0 || cubePoint.y > 1 || cubePoint.z < 0 || cubePoint.z > 1)
+    if (cubePoint.x < 0 || cubePoint.x > 1 || cubePoint.y < 0 || cubePoint.y > 1.01 || cubePoint.z < 0 || cubePoint.z > 1)
         return float4(0);
 
     // calculate the depth color
