@@ -32,6 +32,19 @@ import MetalKit
 import SceneKit
 import StructureKitCTypes
 
+public struct STKPoint3D {
+    public var x: CGFloat
+    public var y: CGFloat
+    public var z: CGFloat
+  
+  public init(x: CGFloat, y: CGFloat, z: CGFloat) {
+    self.x = x
+    self.y = y
+    self.z = z
+  }
+
+}
+
 extension String: Error {}
 
 extension float4x4 {
@@ -211,10 +224,10 @@ extension MTLRenderPipelineDescriptor {
 
 }
 
-public func makeDepthStencilState(_ device: MTLDevice) -> MTLDepthStencilState {
+public func makeDepthStencilState(_ device: MTLDevice, isDepthWriteEnabled: Bool = true) -> MTLDepthStencilState {
   let depthStencilDescriptor = MTLDepthStencilDescriptor()
   depthStencilDescriptor.depthCompareFunction = .less
-  depthStencilDescriptor.isDepthWriteEnabled = true
+  depthStencilDescriptor.isDepthWriteEnabled = isDepthWriteEnabled
   return device.makeDepthStencilState(descriptor: depthStencilDescriptor)!
 }
 

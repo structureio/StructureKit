@@ -33,6 +33,7 @@ import MetalKit
 
 public enum STKMeshRenderingStyle {
   case solid
+  case transparentSolid
   case wireframe
 }
 
@@ -152,6 +153,7 @@ public class STKMetalRenderer: NSObject, STKRenderer {
   // data to visualize
   private var _scanMesh: STKMeshBuffers
   private var _arkitMesh: STKMeshBuffers
+  private var _lines: [STKMeshBuffers] = []
   private var _anchors: [simd_float4x4] = []
   private var _volumeSize = simd_float3(1, 1, 1)
   private var colorCameraGLProjectionMatrix = float4x4.identity
@@ -168,7 +170,8 @@ public class STKMetalRenderer: NSObject, STKRenderer {
   private var _anchorRenderer: STKLineRenderer
   private var _depthOverlayRenderer: STKDepthRenderer
   private var _meshRenderer: STKScanMeshRenderer
-
+  private var _thickLineRenderer: STKMeshRendererThickLines
+  
   // rendering state
   private var _commandEncoder: MTLRenderCommandEncoder?
   private var _commandBuffer: MTLCommandBuffer?
@@ -213,6 +216,7 @@ public class STKMetalRenderer: NSObject, STKRenderer {
     _anchorRenderer = STKLineRenderer(view: view, device: device)
     _depthOverlayRenderer = STKDepthRenderer(view: view, device: device)
     _meshRenderer = STKScanMeshRenderer(view: view, device: device)
+    _thickLineRenderer = STKMeshRendererThickLines(view: view, device: device)
 
     _scanMesh = STKMeshBuffers(_device)
     _scanMesh.mesh = mesh
@@ -235,7 +239,21 @@ public class STKMetalRenderer: NSObject, STKRenderer {
   public func setARKitMesh(_ mesh: ARFaceGeometry) { _arkitMesh.updateMesh(arkitFace: mesh) }
 
   public func setARKitAnchors(_ anchors: [simd_float4x4]) { _anchors = anchors }
-
+  
+  public func setLines(verticesList: inout [[vector_float3]], color: vector_float3 = vector_float3(0,1,0))  {
+    _lines.removeAll(keepingCapacity: true)
+    _lines.reserveCapacity(verticesList.count)
+    if (verticesList.count > 0)
+    {
+      for vertices in verticesList {
+        var thickLineBuffer = STKMeshBuffers(MTLCreateSystemDefaultDevice()!)
+        
+        thickLineBuffer.update(thickLine: vertices, colors: [vector_float3](repeating: color, count: vertices.count))
+        _lines.append(thickLineBuffer)
+      }
+    }
+  }
+  
   public func adjustCubeSize(_ sizeInMeters: simd_float3) { _volumeSize = sizeInMeters }
 
   public func setARKitTransformation(_ transformation: simd_float4x4) { _arkitRenderer.arkitToWorld = transformation }
@@ -334,6 +352,16 @@ public class STKMetalRenderer: NSObject, STKRenderer {
       color: color,
       style: style)
   }
+  
+  public func renderThickLines(
+      cameraPose: simd_float4x4, orientation: simd_float4x4) {
+      guard let commandEncoder = _commandEncoder else { return }
+        let worldModelMat = cameraPose.inverse
+        let projectionMat = orientation * projection
+        for line in _lines {
+          _thickLineRenderer.render(commandEncoder, node: line, worldModelMatrix: worldModelMat, projectionMatrix: projectionMat)
+        }
+    }
 
   public func renderARKitMesh(cameraPose: simd_float4x4, orientation: simd_float4x4) {
     guard let commandEncoder = _commandEncoder else { return }

@@ -44,8 +44,12 @@ public class STKMeshRendererSolid: STKShader {
   var depthStencilState: MTLDepthStencilState
   private var pipelineState: MTLRenderPipelineState
 
-  public init(colorFormat: MTLPixelFormat, depthFormat: MTLPixelFormat, device: MTLDevice) {
-    depthStencilState = makeDepthStencilState(device)
+  public init(colorFormat: MTLPixelFormat, depthFormat: MTLPixelFormat, device: MTLDevice, transparent: Bool = false) {
+    if transparent {
+      depthStencilState = makeDepthStencilState(device, isDepthWriteEnabled: false)
+    } else {
+      depthStencilState = makeDepthStencilState(device)
+    }
 
     let vertexDescriptor = MTLVertexDescriptor()
     vertexDescriptor.attributes[0] = MTLVertexAttributeDescriptor(bufferIndex: 0, offset: 0, format: .float3)  // vertices
@@ -553,11 +557,13 @@ public class STKMeshRendererLines: STKShader {
 
 public class STKScanMeshRenderer {
   private var solid: STKMeshRendererSolid
+  private var transparentSolid: STKMeshRendererSolid
   private var wireframe: STKMeshRendererWireframe
-
+  
   public init(view: MTKView, device: MTLDevice) {
     solid = STKShaderManager.solid
     wireframe = STKShaderManager.wireframe
+    transparentSolid = STKShaderManager.transparentSolid
   }
 
   public func render(
@@ -589,6 +595,14 @@ public class STKScanMeshRenderer {
         projectionMatrix: projectionMatrix,
         useXray: false,
         color: color)
+    case .transparentSolid:
+      transparentSolid.render(
+        commandEncoder,
+        node: node,
+        worldModelMatrix: modelViewMatrix,
+        projectionMatrix: projectionMatrix,
+        color: color
+      )
     }
   }
 
