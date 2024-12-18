@@ -32,19 +32,6 @@ import MetalKit
 import SceneKit
 import StructureKitCTypes
 
-public struct STKPoint3D {
-    public var x: CGFloat
-    public var y: CGFloat
-    public var z: CGFloat
-  
-  public init(x: CGFloat, y: CGFloat, z: CGFloat) {
-    self.x = x
-    self.y = y
-    self.z = z
-  }
-
-}
-
 extension String: Error {}
 
 extension float4x4 {
