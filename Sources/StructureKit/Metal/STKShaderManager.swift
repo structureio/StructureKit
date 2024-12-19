@@ -34,7 +34,6 @@ public class STKShaderManager {
   public static let device = MTLCreateSystemDefaultDevice()!
 
   public static let solid = STKMeshRendererSolid(colorFormat: pixelFormat, depthFormat: depthFormat, device: device)
-  public static let transparentSolid = STKMeshRendererSolid(colorFormat: pixelFormat, depthFormat: depthFormat, device: device, transparent: true)
   public static let wireframe = STKMeshRendererWireframe(
     colorFormat: pixelFormat, depthFormat: depthFormat, device: device)
   public static let vertexColor = STKMeshRendererColor(

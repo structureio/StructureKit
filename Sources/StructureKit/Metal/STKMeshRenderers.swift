@@ -44,12 +44,8 @@ public class STKMeshRendererSolid: STKShader {
   var depthStencilState: MTLDepthStencilState
   private var pipelineState: MTLRenderPipelineState
 
-  public init(colorFormat: MTLPixelFormat, depthFormat: MTLPixelFormat, device: MTLDevice, transparent: Bool = false) {
-    if transparent {
-      depthStencilState = makeDepthStencilState(device, isDepthWriteEnabled: false)
-    } else {
-      depthStencilState = makeDepthStencilState(device)
-    }
+  public init(colorFormat: MTLPixelFormat, depthFormat: MTLPixelFormat, device: MTLDevice) {
+    depthStencilState = makeDepthStencilState(device)
 
     let vertexDescriptor = MTLVertexDescriptor()
     vertexDescriptor.attributes[0] = MTLVertexAttributeDescriptor(bufferIndex: 0, offset: 0, format: .float3)  // vertices
@@ -91,7 +87,8 @@ public class STKMeshRendererSolid: STKShader {
     node: STKDrawableObject,
     worldModelMatrix: float4x4,
     projectionMatrix: float4x4,
-    color: vector_float4 = vector_float4(1, 1, 1, 1)
+    color: vector_float4 = vector_float4(1, 1, 1, 1),
+    hideBackFaces: Bool = true
   ) {
     guard node.vertexType is GLKVector3,
       node.indexType is UInt32
@@ -106,7 +103,10 @@ public class STKMeshRendererSolid: STKShader {
 
     commandEncoder.pushDebugGroup("RenderMeshLightedGrey")
 
-    commandEncoder.setDepthStencilState(depthStencilState)
+    // Setting the depth stencil state to prevent rendering the back faces, otherwise it renders the backfaces and mesh apprears transparent
+    if hideBackFaces {
+      commandEncoder.setDepthStencilState(depthStencilState)
+    }
     commandEncoder.setRenderPipelineState(pipelineState)
 
     // buffers
@@ -557,13 +557,11 @@ public class STKMeshRendererLines: STKShader {
 
 public class STKScanMeshRenderer {
   private var solid: STKMeshRendererSolid
-  private var transparentSolid: STKMeshRendererSolid
   private var wireframe: STKMeshRendererWireframe
   
   public init(view: MTKView, device: MTLDevice) {
     solid = STKShaderManager.solid
     wireframe = STKShaderManager.wireframe
-    transparentSolid = STKShaderManager.transparentSolid
   }
 
   public func render(
@@ -596,12 +594,13 @@ public class STKScanMeshRenderer {
         useXray: false,
         color: color)
     case .transparentSolid:
-      transparentSolid.render(
+      solid.render(
         commandEncoder,
         node: node,
         worldModelMatrix: modelViewMatrix,
         projectionMatrix: projectionMatrix,
-        color: color
+        color: color,
+        hideBackFaces: false
       )
     }
   }
