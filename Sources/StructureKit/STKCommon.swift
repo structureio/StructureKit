@@ -211,10 +211,10 @@ extension MTLRenderPipelineDescriptor {
 
 }
 
-public func makeDepthStencilState(_ device: MTLDevice) -> MTLDepthStencilState {
+public func makeDepthStencilState(_ device: MTLDevice, isDepthWriteEnabled: Bool = true) -> MTLDepthStencilState {
   let depthStencilDescriptor = MTLDepthStencilDescriptor()
   depthStencilDescriptor.depthCompareFunction = .less
-  depthStencilDescriptor.isDepthWriteEnabled = true
+  depthStencilDescriptor.isDepthWriteEnabled = isDepthWriteEnabled
   return device.makeDepthStencilState(descriptor: depthStencilDescriptor)!
 }
 
