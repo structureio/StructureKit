@@ -28,8 +28,8 @@
 
 import MetalKit
 
-class STKMetalLibLoader {
-  class func load(device: MTLDevice) -> MTLLibrary {
+public class STKMetalLibLoader {
+  public class func load(device: MTLDevice) -> MTLLibrary {
     guard
       let url = Bundle.main.url(
         forResource: "default", withExtension: "metallib", subdirectory: "StructureKit_StructureKit.bundle"),

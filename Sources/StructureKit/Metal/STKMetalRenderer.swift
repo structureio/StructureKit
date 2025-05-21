@@ -178,7 +178,7 @@ public class STKMetalRenderer: NSObject, STKRenderer {
   private var _currentDrawable: CAMetalDrawable?
 
   // projection
-  private var projection: float4x4 { colorCameraGLProjectionMatrix }
+  public var projection: float4x4 { colorCameraGLProjectionMatrix }
   private var frameRatio: Float {
     abs(colorCameraGLProjectionMatrix.columns.0[0] / colorCameraGLProjectionMatrix.columns.1[1])
   }
@@ -204,7 +204,7 @@ public class STKMetalRenderer: NSObject, STKRenderer {
     }
   }
 
-  var commandEncoder: MTLRenderCommandEncoder? { _commandEncoder }
+  public var commandEncoder: MTLRenderCommandEncoder? { _commandEncoder }
 
   public init(view: MTKView, device: MTLDevice, mesh: STKMesh) {
     _mtkView = view
