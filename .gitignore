@@ -6,3 +6,6 @@ xcuserdata/
 DerivedData/
 .swiftpm/
 .netrc
+/.index-build
+/.idea
+
