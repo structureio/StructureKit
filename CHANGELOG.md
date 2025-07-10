@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+## 1.0.5
+
+### Added
+* Hole visualization. A demo of hole visualization is available in the Structure SDK documentation
+
+### Changed
+* Updated the visibility of the rendering API to make it more compatible with custom renderers
+
 ## 1.0.4
 
 ### Added
