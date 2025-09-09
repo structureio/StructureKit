@@ -34,23 +34,59 @@ using namespace metal;
 
 struct VertexOut
 {
-    float4 position [[position]];
-    float4 color;
-    float pointSize [[point_size]];
+  float4 position [[position]];
+  float2 texCoords;
+  float4 color;
+};
+
+constant float2 quadVertices[4] = {
+  float2(-1.0, -1.0),
+  float2(1.0, -1.0),
+  float2(-1.0, 1.0),
+  float2(1.0, 1.0)
+};
+
+constant float2 quadTexCoords[4] = {
+  float2(0.0, 1.0),
+  float2(1.0, 1.0),
+  float2(0.0, 0.0),
+  float2(1.0, 0.0)
 };
 
 vertex VertexOut vertexColorPoints(
-    STKVertexColor in [[stage_in]],
-    const device STKUniformsMesh& uniforms [[buffer(STKVertexBufferIndexUniforms)]])
+    const device vector_float3* positions [[buffer(STKVertexAttrPosition)]],
+    const device vector_float3* colors [[buffer(STKVertexAttrAddition)]],
+    const device STKUniformsMeshPoints& uniforms [[buffer(STKVertexBufferIndexUniforms)]],
+    unsigned int vertex_id [[vertex_id]],
+    unsigned int instance_id [[instance_id]])
 {
-    VertexOut out;
-    out.position = uniforms.projectionMatrix * uniforms.modelViewMatrix * float4(in.position, 1);
-    out.color = float4(in.color, 1);
-    out.pointSize = 5.f;
-    return out;
+  VertexOut out;
+  
+  float3 current_position = positions[instance_id];
+  float3 current_color = colors[instance_id];
+  
+  float aspectRatio = uniforms.projectionMatrix[1][1] / uniforms.projectionMatrix[0][0];
+  float4 posCenter = uniforms.projectionMatrix * uniforms.modelViewMatrix * float4(current_position, 1.0);
+  
+  float2 vertexOffset = quadVertices[vertex_id] * uniforms.pointSize;
+  vertexOffset.y *= aspectRatio;
+
+  out.position.xy = posCenter.xy + vertexOffset;
+  out.position.z = posCenter.z;
+  out.position.w = posCenter.w;
+  
+  out.texCoords = quadTexCoords[vertex_id];
+  out.color = float4(current_color * 255, 1.0);
+
+  return out;
 }
 
-fragment float4 fragmentColorPoints(VertexOut in [[stage_in]])
+
+fragment float4 fragmentColorPoints(
+    VertexOut in [[stage_in]],
+    texture2d<float> textureColor [[texture(0)]],
+    sampler textureSampler [[sampler(0)]])
 {
-    return in.color;
+  float4 textureColorSample = textureColor.sample(textureSampler, in.texCoords);
+  return in.color * textureColorSample;
 }

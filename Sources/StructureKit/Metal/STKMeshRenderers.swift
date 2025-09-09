@@ -388,7 +388,9 @@ public class STKMeshRendererTexture: STKShader {
 public class STKMeshRendererPoints: STKShader {
   private var depthStencilState: MTLDepthStencilState
   private var pipelineState: MTLRenderPipelineState
-
+  private var pointTexture: MTLTexture
+  private var textureSamplerState: MTLSamplerState
+  
   public init(colorFormat: MTLPixelFormat, depthFormat: MTLPixelFormat, device: MTLDevice) {
     depthStencilState = makeDepthStencilState(device)
 
@@ -406,7 +408,16 @@ public class STKMeshRendererPoints: STKShader {
       vertexDescriptor,
       colorFormat,
       depthFormat,
-      blending: false)
+      blending: true)
+    
+    pointTexture = STKMeshRendererPoints.generateCircleTexture(device: device)
+    
+    let samplerDescriptor = MTLSamplerDescriptor()
+    samplerDescriptor.minFilter = .linear
+    samplerDescriptor.magFilter = .linear
+    samplerDescriptor.sAddressMode = .clampToEdge
+    samplerDescriptor.tAddressMode = .clampToEdge
+    textureSamplerState = device.makeSamplerState(descriptor: samplerDescriptor)!
   }
 
   public convenience init(view: MTKView, device: MTLDevice) {
@@ -446,7 +457,7 @@ public class STKMeshRendererPoints: STKShader {
     commandEncoder.pushDebugGroup("RenderPoints")
     commandEncoder.setRenderPipelineState(pipelineState)
 
-    commandEncoder.setCullMode(MTLCullMode.front)
+    commandEncoder.setCullMode(MTLCullMode.none)
     commandEncoder.setDepthStencilState(depthStencilState)
     commandEncoder.setRenderPipelineState(pipelineState)
 
@@ -455,14 +466,70 @@ public class STKMeshRendererPoints: STKShader {
 
     // set uniforms
     let nodeModelMatrix = worldModelMatrix * node.modelMatrix()
-    var uniforms = STKUniformsMesh(
-      modelViewMatrix: nodeModelMatrix, projectionMatrix: projectionMatrix, color: vector_float4(1, 1, 1, alpha))
+    var uniforms = STKUniformsMeshPoints(
+      modelViewMatrix: nodeModelMatrix, projectionMatrix: projectionMatrix, pointSize: 0.05)
     commandEncoder.setVertexBytes(
       &uniforms, length: MemoryLayout<STKUniformsMesh>.stride, index: Int(STKVertexBufferIndexUniforms.rawValue))
-
-    commandEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: node.vertexCount())
+    
+    // Set the texture and sampler for the fragment shader
+    commandEncoder.setFragmentTexture(pointTexture, index: 0)
+    commandEncoder.setFragmentSamplerState(textureSamplerState, index: 0)
+    
+    commandEncoder.drawPrimitives(
+      type: .triangleStrip,
+      vertexStart: 0,
+      vertexCount: 4,
+      instanceCount: node.vertexCount()
+    )
 
     commandEncoder.popDebugGroup()
+  }
+  
+  private static func generateCircleTexture(device: MTLDevice, size:Int = 16) -> MTLTexture {
+    let radius = Float(size) / 2.0
+    var textureData = [UInt8](repeating: 0, count: size * size * 4) // RGBA
+    
+    for y in 0..<size {
+      for x in 0..<size {
+        let dx = Float(x) - radius
+        let dy = Float(y) - radius
+        let dist = sqrt(dx * dx + dy * dy)
+        
+        // Set alpha based on distance from center
+        let alpha: UInt8
+        if dist < radius - 2 {
+          alpha = 255
+        }
+        else if dist < radius {
+          // Simple linear falloff
+          let ratio = (1.0 - dist / radius)
+          alpha = UInt8(sqrt(ratio) * 255.0)
+        } else {
+          alpha = 0
+        }
+        
+        let index = (y * size + x) * 4
+        textureData[index + 0] = 255 // R
+        textureData[index + 1] = 255 // G
+        textureData[index + 2] = 255 // B
+        textureData[index + 3] = alpha // A
+      }
+    }
+    
+    let textureDescriptor = MTLTextureDescriptor.texture2DDescriptor(
+      pixelFormat: .rgba8Unorm,
+      width: size,
+      height: size,
+      mipmapped: false)
+    
+    guard let texture = device.makeTexture(descriptor: textureDescriptor) else {
+      fatalError("Failed to create texture.")
+    }
+    
+    let region = MTLRegionMake2D(0, 0, size, size)
+    texture.replace(region: region, mipmapLevel: 0, withBytes: &textureData, bytesPerRow: size * 4)
+    
+    return texture
   }
 }
 
