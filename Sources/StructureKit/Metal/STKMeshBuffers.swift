@@ -312,5 +312,44 @@ extension STKMeshBuffers {
     nTriangle = indices.count
     indexBuffer = device.makeBuffer(bytes: indices, length: indices.count * MemoryLayout<UInt32>.stride, options: [])
   }
-
+  
+  public func updateMesh(vertices: [vector_float3], colors: [vector_float3] = [], indices:[UInt32] = []) {
+    clear()
+    
+    vertexType = GLKVector3()
+    indexType = UInt32()
+    
+    guard vertices.count > 0 else { return }
+    
+    // The shader excpects GLK types
+    var verticesGLK: [GLKVector3] = []
+    for v in vertices {
+      verticesGLK.append(GLKVector3Make(Float(v.x), Float(v.y), Float(v.z)))
+    }
+    
+    nVertex = verticesGLK.count
+    vertexBuffer = device.makeBuffer(
+      bytes: verticesGLK, length: verticesGLK.count * MemoryLayout<GLKVector3>.stride, options: [])
+    
+    if colors.count == vertices.count {
+      var colorsGLK: [GLKVector3] = []
+      for v in colors {
+        colorsGLK.append(GLKVector3Make(Float(v.x), Float(v.y), Float(v.z)))
+      }
+      
+      colorBuffer = device.makeBuffer(
+        bytes: colorsGLK, length: colorsGLK.count * MemoryLayout<GLKVector3>.stride, options: [])
+    }
+    
+    if !indices.isEmpty && indices.count % 3 == 0 {
+      nTriangle = indices.count / 3
+      indexBuffer = device.makeBuffer(bytes: indices, length: indices.count * MemoryLayout<UInt32>.stride, options: [])
+    }
+    
+  }
+  
+  public func update(cloud: [vector_float3], colors: [vector_float3]) {
+    updateMesh(vertices: cloud, colors: colors)
+  }
+  
 }
