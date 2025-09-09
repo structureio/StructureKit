@@ -276,7 +276,7 @@ public class STKMeshRendererColor: STKShader {
     commandEncoder.pushDebugGroup("RenderMeshColor")
     commandEncoder.setRenderPipelineState(pipelineState)
 
-    commandEncoder.setCullMode(MTLCullMode.front)
+    commandEncoder.setCullMode(MTLCullMode.none)
     commandEncoder.setDepthStencilState(depthStencilState)
     commandEncoder.setRenderPipelineState(pipelineState)
 
