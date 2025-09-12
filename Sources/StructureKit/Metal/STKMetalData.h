@@ -71,6 +71,12 @@ struct STKUniformsDepthOverlay
     float depthMin;
     float depthMax;
     float alpha;
+    // Variables for colouring depth for distance guide mode
+    int mode;
+    float validRangeMinMM;
+    float validRangeMaxMM;
+    vector_float4 validRangeColor;
+    vector_float4 outOfRangeColor;
 };
 
 struct STKUniformsLine

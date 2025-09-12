@@ -84,7 +84,20 @@ fragment float4 fragmentDepthOverlay(
         return float4(0);
 
     // calculate the depth color
-    float4 finalColor = calcDepthColor(depth, float2(uniforms.depthMin, uniforms.depthMax), colors);
-    finalColor.w = uniforms.alpha;
-    return finalColor;
+    if (uniforms.mode == 1) {
+        float4 finalColor = calcDepthColor(depth, float2(uniforms.depthMin, uniforms.depthMax), colors);
+        finalColor.w = uniforms.alpha;
+        return finalColor;
+    } else {
+        // Use validRangeColor in ideal range, outOfRangeColor elsewhere.
+        const float feather = 40.0; // Use softness of 40 mm
+        
+        float inAtMin  = smoothstep(uniforms.validRangeMinMM - feather, uniforms.validRangeMinMM + feather, depth);
+        float inAtMax  = 1.0 - smoothstep(uniforms.validRangeMaxMM - feather, uniforms.validRangeMaxMM + feather, depth);
+        float t        = clamp(inAtMin * inAtMax, 0.0, 1.0);
+
+        float4 color   = mix(uniforms.outOfRangeColor, uniforms.validRangeColor, t);
+        color.a        = uniforms.alpha;
+        return color;
+    }
 }

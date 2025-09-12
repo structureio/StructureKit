@@ -34,6 +34,12 @@ import StructureKitCTypes
 // 1. the depth frame
 // 2. the cube
 // 3. the depth overlay inside the cube
+
+public enum STKDepthOverlayMode: Int {
+    case palette = 1
+    case range   = 2
+}
+
 public class STKDepthRenderer {
   private var mtkView: MTKView
   private var renderDepthState: MTLRenderPipelineState
@@ -52,6 +58,12 @@ public class STKDepthRenderer {
   private var _renderCubeState: MTLRenderPipelineState!
   private var _vertexCubeBuffer: MTLBuffer!
   private var _indexCubeBuffer: MTLBuffer!
+  
+  private var overlayMode: STKDepthOverlayMode = .palette
+  private var validRangeMinMM: Float = 0.0
+  private var validRangeMaxMM: Float = 0.0
+  private var validRangeColor: simd_float4 = simd_float4(0,1,0,0.5) // Green
+  private var outOfRangeColor: simd_float4 = simd_float4(1,0,0,0.5) // Red
 
   public init(view: MTKView, device: MTLDevice) {
     mtkView = view
@@ -214,7 +226,12 @@ public class STKDepthRenderer {
       cubeModelInv: float4x4.makeScale(volumeSizeInMeters.x, volumeSizeInMeters.y, volumeSizeInMeters.z).inverse,
       depthMin: minDistM * 1000,
       depthMax: maxDistM * 1000,
-      alpha: alpha
+      alpha: alpha,
+      mode: Int32(overlayMode.rawValue),
+      validRangeMinMM: validRangeMinMM,
+      validRangeMaxMM: validRangeMaxMM,
+      validRangeColor: validRangeColor,
+      outOfRangeColor: outOfRangeColor
     )
 
     commandEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
@@ -297,6 +314,19 @@ public class STKDepthRenderer {
       indexBuffer: _indexCubeBuffer,
       indexBufferOffset: 0)
     commandEncoder.popDebugGroup()
+  }
+  
+  public func configureDepthOverlay(
+      _ mode: STKDepthOverlayMode,
+      validRangeMinMM: Float = 0, validRangeMaxMM: Float = 0,
+      validRangeColor: simd_float4 = simd_float4(0,1,0,0.5),
+      outOfRangeColor: simd_float4 = simd_float4(1,0,0,0.5)
+  ) {
+      self.overlayMode = mode
+      self.validRangeMinMM = validRangeMinMM
+      self.validRangeMaxMM = validRangeMaxMM
+      self.validRangeColor = validRangeColor
+      self.outOfRangeColor = outOfRangeColor
   }
 
 }

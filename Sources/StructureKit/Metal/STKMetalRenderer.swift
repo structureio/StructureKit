@@ -261,6 +261,16 @@ public class STKMetalRenderer: NSObject, STKRenderer {
   public func setDepthRenderingColors(_ baseColors: [simd_float4]) {
     _depthOverlayRenderer.depthRenderingColors = baseColors
   }
+  
+  public func configureDepthOverlay(
+    _ mode: STKDepthOverlayMode,
+    validRangeMinMM: Float = 0,
+    validRangeMaxMM: Float = 0,
+    validRangeColor: simd_float4 = simd_float4(0,1,0,0.5),
+    outOfRangeColor: simd_float4 = simd_float4(1,0,0,0.5))
+  {
+    _depthOverlayRenderer.configureDepthOverlay(mode, validRangeMinMM: validRangeMinMM, validRangeMaxMM: validRangeMaxMM, validRangeColor: validRangeColor, outOfRangeColor: outOfRangeColor)
+  }
 
   public func startRendering() {
     guard let commandBuffer = _commandQueue.makeCommandBuffer(),
