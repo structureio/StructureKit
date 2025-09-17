@@ -33,7 +33,7 @@
 
 using namespace metal;
 
-vertex STKVertexTexOut vertexDepthOverlay(
+vertex STKVertexTexOut vertexDepthBandOverlay(
     const device STKVertexTex* vertex_array [[buffer(0)]],
     const device STKUniformsDepthOverlay& uniforms [[buffer(1)]],
     unsigned int vid [[vertex_id]])
@@ -47,11 +47,10 @@ vertex STKVertexTexOut vertexDepthOverlay(
     return VertexOut;
 }
 
-fragment float4 fragmentDepthOverlay(
+fragment float4 fragmentDepthBandOverlay(
     STKVertexTexOut interpolated [[stage_in]],
-    const device STKUniformsDepthOverlay& uniforms [[buffer(0)]],
+    const device STKUniformsDepthBandOverlay& uniforms [[buffer(0)]],
     texture2d<float> texDepth [[texture(0)]],
-    texture2d<float> colors [[texture(1)]],
     sampler sampler2D [[sampler(0)]])
 {
     // depth udefined
@@ -72,19 +71,16 @@ fragment float4 fragmentDepthOverlay(
     const float4 worldPoint = uniforms.cameraPose * cameraPoint;
     const float4 cubePoint = uniforms.cubeModelInv * worldPoint;
 
-    // the cube borders
-    //  const float eps1 = 0.003;
-    //  if((abs(cubePoint.x) < eps1 || abs(cubePoint.x - 1) < eps1)
-    //    || (abs(cubePoint.y) < eps1 || abs(cubePoint.y - 1) < eps1)
-    //    || (abs(cubePoint.z) < eps1 || abs(cubePoint.z - 1) < eps1))
-    //    return float4(0, 1, 0, uniforms.alpha);
-
     // outside the box
     if (cubePoint.x < 0 || cubePoint.x > 1 || cubePoint.y < 0 || cubePoint.y > 1 || cubePoint.z < 0 || cubePoint.z > 1)
         return float4(0);
 
-    // calculate the depth color
-    float4 finalColor = calcDepthColor(depth, float2(uniforms.depthMin, uniforms.depthMax), colors);
-    finalColor.w = uniforms.alpha;
-    return finalColor;
+    // Use validRangeColor in ideal range, outOfRangeColor elsewhere.
+    float inAtMin  = smoothstep(uniforms.validRangeMinMM - uniforms.feather, uniforms.validRangeMinMM + uniforms.feather, depth);
+    float inAtMax  = 1.0 - smoothstep(uniforms.validRangeMaxMM - uniforms.feather, uniforms.validRangeMaxMM + uniforms.feather, depth);
+    float t        = clamp(inAtMin * inAtMax, 0.0, 1.0);
+
+    float4 color   = mix(uniforms.outOfRangeColor, uniforms.validRangeColor, t);
+    color.a        = uniforms.alpha;
+    return color;
 }
