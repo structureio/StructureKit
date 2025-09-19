@@ -34,6 +34,7 @@ import StructureKitCTypes
 // 1. the depth frame
 // 2. the cube
 // 3. the depth overlay inside the cube
+
 public class STKDepthRenderer {
   private var mtkView: MTKView
   private var renderDepthState: MTLRenderPipelineState
@@ -52,7 +53,7 @@ public class STKDepthRenderer {
   private var _renderCubeState: MTLRenderPipelineState!
   private var _vertexCubeBuffer: MTLBuffer!
   private var _indexCubeBuffer: MTLBuffer!
-
+  
   public init(view: MTKView, device: MTLDevice) {
     mtkView = view
     self.device = device
@@ -298,5 +299,4 @@ public class STKDepthRenderer {
       indexBufferOffset: 0)
     commandEncoder.popDebugGroup()
   }
-
 }

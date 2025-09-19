@@ -169,6 +169,7 @@ public class STKMetalRenderer: NSObject, STKRenderer {
   private var _arkitRenderer: STKARKitOverlayRenderer
   private var _anchorRenderer: STKLineRenderer
   private var _depthOverlayRenderer: STKDepthRenderer
+  private var _depthBandOverlayRenderer: STKDepthBandOverlayRenderer
   private var _meshRenderer: STKScanMeshRenderer
   private var _thickLineRenderer: STKMeshRendererThickLines
   
@@ -215,6 +216,7 @@ public class STKMetalRenderer: NSObject, STKRenderer {
     _arkitRenderer = STKARKitOverlayRenderer(view: view, device: device)
     _anchorRenderer = STKLineRenderer(view: view, device: device)
     _depthOverlayRenderer = STKDepthRenderer(view: view, device: device)
+    _depthBandOverlayRenderer = STKDepthBandOverlayRenderer(view: view, device: device)
     _meshRenderer = STKScanMeshRenderer(view: view, device: device)
     _thickLineRenderer = STKMeshRendererThickLines(view: view, device: device)
 
@@ -226,6 +228,7 @@ public class STKMetalRenderer: NSObject, STKRenderer {
 
   public func setDepthFrame(_ depthFrame: STKDepthFrame) {
     _depthOverlayRenderer.uploadColorTextureFromDepth(depthFrame)
+    _depthBandOverlayRenderer.uploadColorTextureFromDepth(depthFrame)
     depthCameraGLProjectionMatrix = float4x4(depthFrame.glProjectionMatrix())
   }
 
@@ -260,6 +263,16 @@ public class STKMetalRenderer: NSObject, STKRenderer {
 
   public func setDepthRenderingColors(_ baseColors: [simd_float4]) {
     _depthOverlayRenderer.depthRenderingColors = baseColors
+  }
+  
+  public func configureDepthBandOverlay(
+    validRangeMinMM: Float = 0,
+    validRangeMaxMM: Float = 0,
+    validRangeColor: simd_float4 = simd_float4(0,1,0,0.5),
+    outOfRangeColor: simd_float4 = simd_float4(1,0,0,0.5),
+    feather: Float = 40.0)
+  {
+    _depthBandOverlayRenderer.configure(validRangeMinMM: validRangeMinMM, validRangeMaxMM: validRangeMaxMM, validRangeColor: validRangeColor, outOfRangeColor: outOfRangeColor, feather: feather)
   }
 
   public func startRendering() {
@@ -326,6 +339,16 @@ public class STKMetalRenderer: NSObject, STKRenderer {
   public func renderHighlightedDepth(cameraPose: simd_float4x4, alpha: Float, textureOrientation: simd_float4x4) {
     guard let commandEncoder = _commandEncoder else { return }
     _depthOverlayRenderer.renderDepthOverlay(
+      commandEncoder,
+      volumeSizeInMeters: _volumeSize,
+      cameraPosition: cameraPose,
+      textureOrientation: textureOrientation,
+      alpha: alpha)
+  }
+  
+  public func renderHighlightedDepthBand(cameraPose: simd_float4x4, alpha: Float, textureOrientation: simd_float4x4) {
+    guard let commandEncoder = _commandEncoder else { return }
+    _depthBandOverlayRenderer.renderDepthOverlay(
       commandEncoder,
       volumeSizeInMeters: _volumeSize,
       cameraPosition: cameraPose,
