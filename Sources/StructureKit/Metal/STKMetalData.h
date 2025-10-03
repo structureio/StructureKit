@@ -73,6 +73,20 @@ struct STKUniformsDepthOverlay
     float alpha;
 };
 
+struct STKUniformsDepthBandOverlay
+{
+    matrix_float4x4 projection;
+    matrix_float4x4 cameraPose;
+    struct STKIntrinsicsMetal cameraIntrinsics;
+    matrix_float4x4 cubeModelInv;
+    float alpha;
+    float validRangeMinMM;
+    float validRangeMaxMM;
+    vector_float4 validRangeColor;
+    vector_float4 outOfRangeColor;
+    float feather;
+};
+
 struct STKUniformsLine
 {
     matrix_float4x4 model;

@@ -17,6 +17,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 * Disabled cull mode for STKMeshRendererColor shader
 
+## 1.0.6
+
+### Added
+* Range based depth overlay rendering. Depth will be colored differently based on inside and outside of a specified range.
 
 ## 1.0.5
 
