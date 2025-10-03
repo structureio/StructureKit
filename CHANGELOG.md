@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+## 1.1.0
+
+### Added
+* Update of STKMeshBuffers with a mesh data
+* Update of STKMeshBuffers with a point cloud
+* Instanced point rendering
+* Option to generate a sphere mesh
+
+### Changed
+* Disabled cull mode for STKMeshRendererColor shader
 
 ## 1.0.6
 

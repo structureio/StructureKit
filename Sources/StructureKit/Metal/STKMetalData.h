@@ -110,6 +110,13 @@ struct STKUniformsMesh
     vector_float4 color;
 };
 
+struct STKUniformsMeshPoints
+{
+  matrix_float4x4 modelViewMatrix;
+  matrix_float4x4 projectionMatrix;
+  float pointSize;
+};
+
 struct STKUniformsMeshWireframe
 {
     matrix_float4x4 modelViewMatrix;
