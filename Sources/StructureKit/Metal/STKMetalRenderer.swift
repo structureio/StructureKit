@@ -243,7 +243,7 @@ public class STKMetalRenderer: NSObject, STKRenderer {
 
   public func setARKitAnchors(_ anchors: [simd_float4x4]) { _anchors = anchors }
   
-  public func setLines(verticesList: inout [[vector_float3]], color: vector_float3 = vector_float3(0,1,0))  {
+  public func setLines(verticesList:[[vector_float3]], color: vector_float3 = vector_float3(0,1,0))  {
     _lines.removeAll(keepingCapacity: true)
     _lines.reserveCapacity(verticesList.count)
     if (verticesList.count > 0)
