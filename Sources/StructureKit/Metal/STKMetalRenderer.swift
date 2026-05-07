@@ -151,9 +151,11 @@ protocol STKRenderer: AnyObject {
 // Starts and finalizes the rendering pipeline.
 public class STKMetalRenderer: NSObject, STKRenderer {
   // data to visualize
-  private var _scanMesh: STKMeshBuffers
-  private var _arkitMesh: STKMeshBuffers
-  private var _lines: [STKMeshBuffers] = []
+  public private(set) var scene: STKScene
+  private let _scanNode: STKSceneNode
+  private let _arkitNode: STKSceneNode
+  private let _linesNode: STKSceneNode
+  
   private var _anchors: [simd_float4x4] = []
   private var _volumeSize = simd_float3(1, 1, 1)
   private var colorCameraGLProjectionMatrix = float4x4.identity
@@ -193,15 +195,11 @@ public class STKMetalRenderer: NSObject, STKRenderer {
     if isPortraitOrientation {
       let width = screen.y * frameRatio
       let overflow = Double(width) - Double(screen.x)
-      let viewport = MTLViewport.init(
-        originX: -overflow / 2, originY: 0, width: Double(width), height: Double(screen.y), znear: z.near, zfar: z.far)
-      return viewport
+      return MTLViewport(originX: -overflow / 2, originY: 0, width: Double(width), height: Double(screen.y), znear: z.near, zfar: z.far)
     } else {
       let height = screen.x * frameRatio
       let overflow = Double(height) - Double(screen.y)
-      let viewport = MTLViewport.init(
-        originX: 0, originY: -overflow / 2, width: Double(screen.x), height: Double(height), znear: z.near, zfar: z.far)
-      return viewport
+      return MTLViewport(originX: 0, originY: -overflow / 2, width: Double(screen.x), height: Double(height), znear: z.near, zfar: z.far)
     }
   }
 
@@ -212,6 +210,15 @@ public class STKMetalRenderer: NSObject, STKRenderer {
     _device = device
     _commandQueue = device.makeCommandQueue()!
 
+    scene = STKScene(device: device)
+    _scanNode = STKSceneNode(name: "ScanMesh", device: device, id: "ScanMesh")
+    _arkitNode = STKSceneNode(name: "ARKitMesh", device: device, id: "ARKitMesh")
+    _linesNode = STKSceneNode(name: "Lines", device: device, id: "Lines")
+
+    _scanNode.isVisible = false
+    _arkitNode.isVisible = false
+    _linesNode.isVisible = false
+
     _colorFrameRenderer = STKColorFrameRenderer(view: view, device: device)
     _arkitRenderer = STKARKitOverlayRenderer(view: view, device: device)
     _anchorRenderer = STKLineRenderer(view: view, device: device)
@@ -220,9 +227,14 @@ public class STKMetalRenderer: NSObject, STKRenderer {
     _meshRenderer = STKScanMeshRenderer(view: view, device: device)
     _thickLineRenderer = STKMeshRendererThickLines(view: view, device: device)
 
-    _scanMesh = STKMeshBuffers(_device)
-    _scanMesh.mesh = mesh
-    _arkitMesh = STKMeshBuffers(_device)
+    _scanNode.buffer.mesh = mesh
+    _scanNode.material = STKMaterial(shaderID: .solid)
+    _arkitNode.material = STKMaterial(shaderID: .custom(_arkitRenderer))
+    
+    scene.addNode(_scanNode)
+    scene.addNode(_arkitNode)
+    scene.addNode(_linesNode)
+    
     super.init()
   }
 
@@ -236,34 +248,57 @@ public class STKMetalRenderer: NSObject, STKRenderer {
     _colorFrameRenderer.uploadColorTexture(colorFrame)
     colorCameraGLProjectionMatrix = float4x4(colorFrame.glProjectionMatrix())
   }
+  
+  public func drawPoints2d(_ points: [simd_float2]) {
+    _colorFrameRenderer.drawPoints(points)
+  }
+  
+  public func setScanningMesh(_ mesh: STKMesh) {
+    _scanNode.buffer.updateMesh(mesh)
+  }
 
-  public func setScanningMesh(_ mesh: STKMesh) { _scanMesh.updateMesh(mesh) }
+  public func setScanningMesh(isVisible: Bool, color: vector_float4 = vector_float4(1, 1, 1, 1), style: STKMeshRenderingStyle = .solid) {
+    _scanNode.isVisible = isVisible
+    _scanNode.material.baseColor = color
+    switch style {
+    case .solid: _scanNode.material.shaderID = .solid
+    case .wireframe: _scanNode.material.shaderID = .wireframe
+    case .transparentSolid: _scanNode.material.shaderID = .solid
+    }
+  }
+  
+  public func setARKitMesh(_ mesh: ARFaceGeometry) {
+    _arkitNode.buffer.updateMesh(arkitFace: mesh)
+    _arkitNode.isVisible = true
+  }
 
-  public func setARKitMesh(_ mesh: ARFaceGeometry) { _arkitMesh.updateMesh(arkitFace: mesh) }
-
-  public func setARKitAnchors(_ anchors: [simd_float4x4]) { _anchors = anchors }
+  public func setARKitMesh(isVisible: Bool) {
+    _arkitNode.isVisible = isVisible
+  }
+  
+  public func setARKitAnchors(_ anchors: [simd_float4x4]) {
+    _anchors = anchors
+  }
   
   public func setLines(verticesList:[[vector_float3]], color: vector_float3 = vector_float3(0,1,0))  {
-    _lines.removeAll(keepingCapacity: true)
-    _lines.reserveCapacity(verticesList.count)
-    if (verticesList.count > 0)
-    {
-      for vertices in verticesList {
-        var thickLineBuffer = STKMeshBuffers(MTLCreateSystemDefaultDevice()!)
-        
-        thickLineBuffer.update(thickLine: vertices, colors: [vector_float3](repeating: color, count: vertices.count))
-        _lines.append(thickLineBuffer)
-      }
+    _linesNode.isVisible = !verticesList.isEmpty
+    for child in _linesNode.children { scene.removeNode(child) }
+    _linesNode.removeAllChildren()
+    for (i, vertices) in verticesList.enumerated() {
+      let node = STKSceneNode(name: "Line_\(i)", device: _device)
+      node.buffer.update(thickLine: vertices, colors: [vector_float3](repeating: color, count: vertices.count))
+      var material = STKMaterial(shaderID: .thickLine)
+      material.baseColor = SIMD4<Float>(color.x, color.y, color.z, 1.0)
+      node.material = material
+      _linesNode.addChild(node)
+      // Note: addChild adds to children, but scene needs registration for ID uniqueness
+      _ = scene.addNode(node, to: _linesNode)
     }
   }
   
   public func adjustCubeSize(_ sizeInMeters: simd_float3) { _volumeSize = sizeInMeters }
-
   public func setARKitTransformation(_ transformation: simd_float4x4) { _arkitRenderer.arkitToWorld = transformation }
-
-  public func setDepthRenderingColors(_ baseColors: [simd_float4]) {
-    _depthOverlayRenderer.depthRenderingColors = baseColors
-  }
+  public func setDepthRenderingColors(_ baseColors: [simd_float4]) { _depthOverlayRenderer.depthRenderingColors = baseColors }
   
   public func configureDepthBandOverlay(
     validRangeMinMM: Float = 0,
@@ -286,7 +321,6 @@ public class STKMetalRenderer: NSObject, STKRenderer {
     _commandBuffer = commandBuffer
     _currentDrawable = currentDrawable
     _commandEncoder = commandEncoder
-
     commandEncoder.setViewport(viewport)
   }
 
@@ -297,13 +331,11 @@ public class STKMetalRenderer: NSObject, STKRenderer {
     else {
       return
     }
-
     commandEncoder.endEncoding()
     commandBuffer.present(currentDrawable)
     commandBuffer.commit()
-
     _commandBuffer = nil
-    _commandBuffer = nil
+    _currentDrawable = nil
     _commandEncoder = nil
   }
 
@@ -324,7 +356,6 @@ public class STKMetalRenderer: NSObject, STKRenderer {
       orientation: orientation,
       useOcclusion: occlusionTest
     )
-
     if drawTriad {
       _anchorRenderer.renderAnchors(
         commandEncoder,
@@ -362,40 +393,6 @@ public class STKMetalRenderer: NSObject, STKRenderer {
       commandEncoder, orientation: textureOrientation, minDepth: range.x, maxDepth: range.y, alpha: 0.5)
   }
 
-  public func renderScanningMesh(
-    cameraPose: simd_float4x4, meshOrientation: simd_float4x4, color: vector_float4, style: STKMeshRenderingStyle
-  ) {
-    guard let commandEncoder = _commandEncoder else { return }
-    _meshRenderer.render(
-      commandEncoder,
-      node: _scanMesh,
-      cameraPosition: cameraPose,
-      projection: projection,
-      orientation: meshOrientation,
-      color: color,
-      style: style)
-  }
-  
-  public func renderThickLines(
-      cameraPose: simd_float4x4, orientation: simd_float4x4) {
-      guard let commandEncoder = _commandEncoder else { return }
-        let worldModelMat = cameraPose.inverse
-        let projectionMat = orientation * projection
-        for line in _lines {
-          _thickLineRenderer.render(commandEncoder, node: line, worldModelMatrix: worldModelMat, projectionMatrix: projectionMat)
-        }
-    }
-
-  public func renderARKitMesh(cameraPose: simd_float4x4, orientation: simd_float4x4) {
-    guard let commandEncoder = _commandEncoder else { return }
-    _arkitRenderer.renderARkitGeom(
-      commandEncoder,
-      mesh: _arkitMesh,
-      cameraPosition: cameraPose,
-      projection: projection,
-      orientation: orientation)
-  }
-
   public func renderARKitAnchors(cameraPose: simd_float4x4, orientation: simd_float4x4) {
     guard let commandEncoder = _commandEncoder else { return }
     _anchorRenderer.renderAnchors(
@@ -406,4 +403,51 @@ public class STKMetalRenderer: NSObject, STKRenderer {
       orientation: orientation)
   }
 
+  public func renderScanningMesh(
+    cameraPose: simd_float4x4, meshOrientation: simd_float4x4, color: vector_float4, style: STKMeshRenderingStyle
+  ) {
+    setScanningMesh(isVisible: true, color: color, style: style)
+
+    let worldModelMat = cameraPose.inverse
+    let projectionMat = meshOrientation * projection
+    render(node: _scanNode, parentTransform: worldModelMat, projection: projectionMat)
+  }
+
+  public func renderARKitMesh(cameraPose: simd_float4x4, orientation: simd_float4x4) {
+    let worldModelMat = cameraPose.inverse
+    let projectionMat = orientation * projection
+    render(node: _arkitNode, parentTransform: worldModelMat, projection: projectionMat)
+  }
+  
+  public func renderScene(cameraPose: simd_float4x4, orientation: simd_float4x4) {
+    let worldModelMat = cameraPose.inverse
+    let projectionMat = orientation * projection
+    render(node: scene.rootNode, parentTransform: worldModelMat, projection: projectionMat)
+  }
+  
+  private func render(node: STKSceneNode, parentTransform: float4x4, projection: float4x4) {
+    guard node.isVisible else { return }
+    let worldTransform = parentTransform * node.localTransform
+    
+    let mesh = node.buffer
+    let material = node.material
+    let shader = material.shaderID.getShader()
+    shader.render(_commandEncoder!, node: mesh, worldModelMatrix: worldTransform, projectionMatrix: projection)
+    
+    for child in node.children {
+      render(node: child, parentTransform: worldTransform, projection: projection)
+    }
+  }
+
+  public func findNode(id: String) -> STKSceneNode? {
+    return scene.findNode(id: id)
+  }
+
+  public func registerNode(_ node: STKSceneNode) {
+    scene.addNode(node)
+  }
+
+  public func unregisterNode(_ node: STKSceneNode) {
+    scene.removeNode(node)
+  }
 }

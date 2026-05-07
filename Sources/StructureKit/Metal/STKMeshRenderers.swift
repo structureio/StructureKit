@@ -30,7 +30,7 @@ import GLKit
 import MetalKit
 import StructureKitCTypes
 
-public protocol STKShader {
+public protocol STKShader: AnyObject {
   func render(
     _ commandEncoder: MTLRenderCommandEncoder,
     node: STKDrawableObject,
