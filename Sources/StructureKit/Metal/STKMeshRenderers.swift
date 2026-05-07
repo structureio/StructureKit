@@ -99,7 +99,10 @@ public class STKMeshRendererSolid: STKShader {
     guard let vertexBuffer = node.vertices(),
       let indexBuffer = node.indices(),
       let normalsBuffer = node.normals()
-    else { return }
+    else {
+      STKLogger.warning("Warning: mesh buffers are missing")
+      return
+    }
 
     commandEncoder.pushDebugGroup("RenderMeshLightedGrey")
 
@@ -182,7 +185,10 @@ public class STKMeshRendererWireframe: STKShader {
     guard let vertexBuffer = node.vertices(),
       let lineIndexBuffer = node.lines(),
       let normalsBuffer = node.normals()
-    else { return }
+    else {
+      STKLogger.warning("Warning: mesh buffers are missing")
+      return
+    }
 
     let solid = STKShaderManager.solid
     if hideBackFaces {
@@ -271,7 +277,10 @@ public class STKMeshRendererColor: STKShader {
       let indexBuffer = node.indices(),
       let colorsBuffer = node.colors(),
       indexBuffer.length > 0
-    else { return }
+    else {
+      STKLogger.warning("Warning: mesh buffers are missing")
+      return
+    }
 
     commandEncoder.pushDebugGroup("RenderMeshColor")
     commandEncoder.setRenderPipelineState(pipelineState)
@@ -351,7 +360,10 @@ public class STKMeshRendererTexture: STKShader {
       let texcoordBuffer = node.texCoords(),
       let textureY = node.textureY(),
       let textureCbCr = node.textureCbCr()
-    else { return }
+    else {
+      STKLogger.warning("Warning: mesh buffers are missing")
+      return
+    }
 
     commandEncoder.pushDebugGroup("RenderMeshTexture")
 
@@ -452,7 +464,10 @@ public class STKMeshRendererPoints: STKShader {
 
     guard let vertexBuffer = node.vertices(),
       let colorsBuffer = node.colors()
-    else { return }
+    else {
+      STKLogger.warning("Warning: mesh buffers are missing")
+      return
+    }
 
     commandEncoder.pushDebugGroup("RenderPoints")
     commandEncoder.setRenderPipelineState(pipelineState)
@@ -592,7 +607,10 @@ public class STKMeshRendererLines: STKShader {
     guard let vertexBuffer = node.vertices(),
       let colorsBuffer = node.colors(),
       let lineIndexBuffer = node.lines()
-    else { return }
+    else {
+      STKLogger.warning("Warning: mesh buffers are missing")
+      return
+    }
 
     commandEncoder.pushDebugGroup("RenderLines")
     commandEncoder.setRenderPipelineState(pipelineState)
@@ -731,7 +749,10 @@ public class STKMeshRendererThickLines: STKShader {
       let indexBuffer = node.indices(),
       let lineDir = node.normals(),
       node.triangleCount() > 0
-    else { return }
+    else {
+      STKLogger.warning("Warning: mesh buffers are missing")
+      return
+    }
 
     commandEncoder.pushDebugGroup("RenderThickLines")
     commandEncoder.setRenderPipelineState(pipelineState)
