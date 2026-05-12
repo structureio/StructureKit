@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+## 1.2.0
+
+### Added
+* Option to render 2d points in the color frame
+* STKLogger - logging mechanism
+* Unified rendering pipeline: STKShaderID, STKMaterial, STKMaterial, STKSceneNode, STKScene, STKShaderProperties
+* New depth rendering modes
+
 ## 1.1.0
 
 ### Added
