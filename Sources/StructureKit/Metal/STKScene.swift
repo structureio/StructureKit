@@ -45,16 +45,35 @@ public enum STKShaderID: Equatable {
   }
 }
 
+public struct STKShaderProperties {
+  /// Flat tint color for untextured meshes
+  public var baseColor: SIMD4<Float> = SIMD4<Float>(1, 1, 1, 1)
+  
+  /// Size for point primitives and line width.
+  public var pointSize: Float = 5.0
+
+  /// Cull backfaces during rendering.
+  public var hideBackFaces: Bool = true
+
+  /// Render wireframe with x-ray effect.
+  public var useXray: Bool = true
+
+  public init(baseColor: SIMD4<Float> = SIMD4<Float>(1, 1, 1, 1), pointSize: Float = 5.0, hideBackFaces: Bool = true, useXray: Bool = true) {
+    self.baseColor = baseColor
+    self.pointSize = pointSize
+    self.hideBackFaces = hideBackFaces
+    self.useXray = useXray
+  }
+}
 
 public struct STKMaterial {
   // MARK: - Pipeline State
   public var shaderID: STKShaderID
-  
-  /// A flat tint color (useful if rendering an untextured, monochrome scan).
-  public var baseColor: SIMD4<Float> = SIMD4<Float>(1, 1, 1, 1)
-  
-  public init(shaderID: STKShaderID) {
+  public var properties: STKShaderProperties
+
+  public init(shaderID: STKShaderID, properties: STKShaderProperties = STKShaderProperties()) {
     self.shaderID = shaderID
+    self.properties = properties
   }
 }
 

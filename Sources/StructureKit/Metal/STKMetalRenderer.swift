@@ -172,7 +172,6 @@ public class STKMetalRenderer: NSObject, STKRenderer {
   private var _anchorRenderer: STKLineRenderer
   private var _depthOverlayRenderer: STKDepthRenderer
   private var _depthBandOverlayRenderer: STKDepthBandOverlayRenderer
-  private var _meshRenderer: STKScanMeshRenderer
   private var _thickLineRenderer: STKMeshRendererThickLines
   
   // rendering state
@@ -224,7 +223,6 @@ public class STKMetalRenderer: NSObject, STKRenderer {
     _anchorRenderer = STKLineRenderer(view: view, device: device)
     _depthOverlayRenderer = STKDepthRenderer(view: view, device: device)
     _depthBandOverlayRenderer = STKDepthBandOverlayRenderer(view: view, device: device)
-    _meshRenderer = STKScanMeshRenderer(view: view, device: device)
     _thickLineRenderer = STKMeshRendererThickLines(view: view, device: device)
 
     _scanNode.buffer.mesh = mesh
@@ -259,7 +257,7 @@ public class STKMetalRenderer: NSObject, STKRenderer {
 
   public func setScanningMesh(isVisible: Bool, color: vector_float4 = vector_float4(1, 1, 1, 1), style: STKMeshRenderingStyle = .solid) {
     _scanNode.isVisible = isVisible
-    _scanNode.material.baseColor = color
+    _scanNode.material.properties.baseColor = color
     switch style {
     case .solid: _scanNode.material.shaderID = .solid
     case .wireframe: _scanNode.material.shaderID = .wireframe
@@ -288,7 +286,7 @@ public class STKMetalRenderer: NSObject, STKRenderer {
       let node = STKSceneNode(name: "Line_\(i)", device: _device)
       node.buffer.update(thickLine: vertices, colors: [vector_float3](repeating: color, count: vertices.count))
       var material = STKMaterial(shaderID: .thickLine)
-      material.baseColor = SIMD4<Float>(color.x, color.y, color.z, 1.0)
+      material.properties.baseColor = SIMD4<Float>(color.x, color.y, color.z, 1.0)
       node.material = material
       _linesNode.addChild(node)
       // Note: addChild adds to children, but scene needs registration for ID uniqueness
@@ -408,6 +406,13 @@ public class STKMetalRenderer: NSObject, STKRenderer {
   ) {
     setScanningMesh(isVisible: true, color: color, style: style)
 
+    // Ensure transparent solid rendering behaves correctly through the properties payload
+    if style == .transparentSolid {
+      _scanNode.material.properties.hideBackFaces = false
+    } else {
+      _scanNode.material.properties.hideBackFaces = true
+    }
+
     let worldModelMat = cameraPose.inverse
     let projectionMat = meshOrientation * projection
     render(node: _scanNode, parentTransform: worldModelMat, projection: projectionMat)
@@ -432,7 +437,7 @@ public class STKMetalRenderer: NSObject, STKRenderer {
     let mesh = node.buffer
     let material = node.material
     let shader = material.shaderID.getShader()
-    shader.render(_commandEncoder!, node: mesh, worldModelMatrix: worldTransform, projectionMatrix: projection)
+    shader.render(_commandEncoder!, node: mesh, properties: material.properties, worldModelMatrix: worldTransform, projectionMatrix: projection)
     
     for child in node.children {
       render(node: child, parentTransform: worldTransform, projection: projection)

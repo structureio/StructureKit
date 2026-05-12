@@ -103,9 +103,11 @@ extension STKARKitOverlayRenderer {
   public func render(
     _ commandEncoder: MTLRenderCommandEncoder,
     node: STKDrawableObject,
+    properties: STKShaderProperties,
     worldModelMatrix: float4x4,
     projectionMatrix: float4x4
   ) {
+    let color = properties.baseColor
     guard let vertexBuffer = node.vertices(),
       let indexBuffer = node.indices()
     else { return }
@@ -119,7 +121,7 @@ extension STKARKitOverlayRenderer {
     var uniforms = STKUniformsMesh(
       modelViewMatrix: float4x4.makeRotationZ(Float.pi) * worldModelMatrix * arkitToWorld,
       projectionMatrix: projectionMatrix,
-      color: vector_float4(1, 1, 1, 0.5))
+      color: color)
     commandEncoder.setVertexBytes(&uniforms, length: MemoryLayout<STKUniformsMesh>.stride, index: 1)
 
     commandEncoder.drawIndexedPrimitives(

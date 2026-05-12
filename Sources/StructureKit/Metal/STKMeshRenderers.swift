@@ -34,6 +34,7 @@ public protocol STKShader: AnyObject {
   func render(
     _ commandEncoder: MTLRenderCommandEncoder,
     node: STKDrawableObject,
+    properties: STKShaderProperties,
     worldModelMatrix: float4x4,
     projectionMatrix: float4x4
   )
@@ -71,25 +72,11 @@ public class STKMeshRendererSolid: STKShader {
   public func render(
     _ commandEncoder: MTLRenderCommandEncoder,
     node: STKDrawableObject,
+    properties: STKShaderProperties,
     worldModelMatrix: float4x4,
     projectionMatrix: float4x4
   ) {
-    render(
-      commandEncoder,
-      node: node,
-      worldModelMatrix: worldModelMatrix,
-      projectionMatrix: projectionMatrix,
-      color: vector_float4(1, 1, 1, 1))
-  }
-
-  public func render(
-    _ commandEncoder: MTLRenderCommandEncoder,
-    node: STKDrawableObject,
-    worldModelMatrix: float4x4,
-    projectionMatrix: float4x4,
-    color: vector_float4 = vector_float4(1, 1, 1, 1),
-    hideBackFaces: Bool = true
-  ) {
+    let color = properties.baseColor
     guard node.vertexType is GLKVector3,
       node.indexType is UInt32
     else {
@@ -107,7 +94,7 @@ public class STKMeshRendererSolid: STKShader {
     commandEncoder.pushDebugGroup("RenderMeshLightedGrey")
 
     // Setting the depth stencil state to prevent rendering the back faces, otherwise it renders the backfaces and mesh apprears transparent
-    if hideBackFaces {
+    if properties.hideBackFaces {
       commandEncoder.setDepthStencilState(depthStencilState)
     }
     commandEncoder.setRenderPipelineState(pipelineState)
@@ -159,22 +146,11 @@ public class STKMeshRendererWireframe: STKShader {
   public func render(
     _ commandEncoder: MTLRenderCommandEncoder,
     node: STKDrawableObject,
+    properties: STKShaderProperties,
     worldModelMatrix: float4x4,
     projectionMatrix: float4x4
   ) {
-    render(
-      commandEncoder, node: node, worldModelMatrix: worldModelMatrix, projectionMatrix: projectionMatrix, useXray: true)
-  }
-
-  public func render(
-    _ commandEncoder: MTLRenderCommandEncoder,
-    node: STKDrawableObject,
-    worldModelMatrix: float4x4,
-    projectionMatrix: float4x4,
-    useXray: Bool = true,
-    color: vector_float4 = vector_float4(1, 1, 1, 1),
-    hideBackFaces: Bool = false
-  ) {
+    let color = properties.baseColor
     guard node.vertexType is GLKVector3,
       node.indexType is UInt32
     else {
@@ -191,17 +167,18 @@ public class STKMeshRendererWireframe: STKShader {
     }
 
     let solid = STKShaderManager.solid
-    if hideBackFaces {
+    if properties.hideBackFaces {
       // use solid shader to fill the depth buffer where necessary
       commandEncoder.setDepthBias(0.01, slopeScale: 1.0, clamp: 0.01)
+      var solidProperties = properties
+      solidProperties.baseColor = vector_float4(0, 0, 0, 0)
       solid.render(
-        commandEncoder, node: node, worldModelMatrix: worldModelMatrix, projectionMatrix: projectionMatrix,
-        color: vector_float4(0, 0, 0, 0))
+        commandEncoder, node: node, properties: solidProperties, worldModelMatrix: worldModelMatrix, projectionMatrix: projectionMatrix)
       commandEncoder.setDepthBias(0, slopeScale: 0, clamp: 0)
     }
 
     commandEncoder.pushDebugGroup("RenderMeshXray")
-    if hideBackFaces {
+    if properties.hideBackFaces {
       commandEncoder.setDepthStencilState(solid.depthStencilState)
     }
     commandEncoder.setRenderPipelineState(pipelineState)
@@ -213,7 +190,7 @@ public class STKMeshRendererWireframe: STKShader {
     var uniforms = STKUniformsMeshWireframe(
       modelViewMatrix: nodeModelMatrix, projectionMatrix: projectionMatrix,
       color: color,
-      useXray: useXray)
+      useXray: properties.useXray)
 
     commandEncoder.setVertexBytes(
       &uniforms, length: MemoryLayout<STKUniformsMeshWireframe>.stride,
@@ -263,9 +240,11 @@ public class STKMeshRendererColor: STKShader {
   public func render(
     _ commandEncoder: MTLRenderCommandEncoder,
     node: STKDrawableObject,
+    properties: STKShaderProperties,
     worldModelMatrix: float4x4,
     projectionMatrix: float4x4
   ) {
+    let color = properties.baseColor
     guard node.vertexType is GLKVector3,
       node.indexType is UInt32
     else {
@@ -283,8 +262,6 @@ public class STKMeshRendererColor: STKShader {
     }
 
     commandEncoder.pushDebugGroup("RenderMeshColor")
-    commandEncoder.setRenderPipelineState(pipelineState)
-
     commandEncoder.setCullMode(MTLCullMode.none)
     commandEncoder.setDepthStencilState(depthStencilState)
     commandEncoder.setRenderPipelineState(pipelineState)
@@ -295,7 +272,7 @@ public class STKMeshRendererColor: STKShader {
     // set uniforms
     let nodeModelMatrix = worldModelMatrix * node.modelMatrix()
     var uniforms = STKUniformsMesh(
-      modelViewMatrix: nodeModelMatrix, projectionMatrix: projectionMatrix, color: vector_float4(1, 1, 1, 1))
+      modelViewMatrix: nodeModelMatrix, projectionMatrix: projectionMatrix, color: color)
     commandEncoder.setVertexBytes(
       &uniforms, length: MemoryLayout<STKUniformsMesh>.stride, index: Int(STKVertexBufferIndexUniforms.rawValue))
 
@@ -345,9 +322,11 @@ public class STKMeshRendererTexture: STKShader {
   public func render(
     _ commandEncoder: MTLRenderCommandEncoder,
     node: STKDrawableObject,
+    properties: STKShaderProperties,
     worldModelMatrix: float4x4,
     projectionMatrix: float4x4
   ) {
+    let color = properties.baseColor
     guard node.vertexType is GLKVector3,
       node.indexType is UInt32
     else {
@@ -377,7 +356,7 @@ public class STKMeshRendererTexture: STKShader {
     // set uniforms
     let nodeModelMatrix = worldModelMatrix * node.modelMatrix()
     var uniforms = STKUniformsMesh(
-      modelViewMatrix: nodeModelMatrix, projectionMatrix: projectionMatrix, color: vector_float4(1, 1, 1, 1))
+      modelViewMatrix: nodeModelMatrix, projectionMatrix: projectionMatrix, color: color)
     commandEncoder.setVertexBytes(
       &uniforms, length: MemoryLayout<STKUniformsMesh>.stride, index: Int(STKVertexBufferIndexUniforms.rawValue))
 
@@ -439,24 +418,11 @@ public class STKMeshRendererPoints: STKShader {
   public func render(
     _ commandEncoder: MTLRenderCommandEncoder,
     node: STKDrawableObject,
+    properties: STKShaderProperties,
     worldModelMatrix: float4x4,
     projectionMatrix: float4x4
   ) {
-    render(
-      commandEncoder,
-      node: node,
-      worldModelMatrix: worldModelMatrix,
-      projectionMatrix: projectionMatrix,
-      alpha: 1.0)
-  }
-
-  public func render(
-    _ commandEncoder: MTLRenderCommandEncoder,
-    node: STKDrawableObject,
-    worldModelMatrix: float4x4,
-    projectionMatrix: float4x4,
-    alpha: Float = 1.0
-  ) {
+    let pointSize = properties.pointSize
     guard node.vertexType is GLKVector3 else {
       assertionFailure("Type mismatch")
       return
@@ -470,8 +436,6 @@ public class STKMeshRendererPoints: STKShader {
     }
 
     commandEncoder.pushDebugGroup("RenderPoints")
-    commandEncoder.setRenderPipelineState(pipelineState)
-
     commandEncoder.setCullMode(MTLCullMode.none)
     commandEncoder.setDepthStencilState(depthStencilState)
     commandEncoder.setRenderPipelineState(pipelineState)
@@ -482,7 +446,7 @@ public class STKMeshRendererPoints: STKShader {
     // set uniforms
     let nodeModelMatrix = worldModelMatrix * node.modelMatrix()
     var uniforms = STKUniformsMeshPoints(
-      modelViewMatrix: nodeModelMatrix, projectionMatrix: projectionMatrix, pointSize: 0.05)
+      modelViewMatrix: nodeModelMatrix, projectionMatrix: projectionMatrix, pointSize: pointSize)
     commandEncoder.setVertexBytes(
       &uniforms, length: MemoryLayout<STKUniformsMesh>.stride, index: Int(STKVertexBufferIndexUniforms.rawValue))
     
@@ -579,24 +543,11 @@ public class STKMeshRendererLines: STKShader {
   public func render(
     _ commandEncoder: MTLRenderCommandEncoder,
     node: STKDrawableObject,
+    properties: STKShaderProperties,
     worldModelMatrix: float4x4,
     projectionMatrix: float4x4
   ) {
-    render(
-      commandEncoder,
-      node: node,
-      worldModelMatrix: worldModelMatrix,
-      projectionMatrix: projectionMatrix,
-      alpha: 1.0)
-  }
-
-  public func render(
-    _ commandEncoder: MTLRenderCommandEncoder,
-    node: STKDrawableObject,
-    worldModelMatrix: float4x4,
-    projectionMatrix: float4x4,
-    alpha: Float = 1.0
-  ) {
+    let color = properties.baseColor
     guard node.vertexType is vector_float3,
       node.indexType is UInt32
     else {
@@ -613,8 +564,6 @@ public class STKMeshRendererLines: STKShader {
     }
 
     commandEncoder.pushDebugGroup("RenderLines")
-    commandEncoder.setRenderPipelineState(pipelineState)
-
     commandEncoder.setCullMode(MTLCullMode.front)
     commandEncoder.setDepthStencilState(depthStencilState)
     commandEncoder.setRenderPipelineState(pipelineState)
@@ -625,7 +574,7 @@ public class STKMeshRendererLines: STKShader {
     // set uniforms
     let nodeModelMatrix = worldModelMatrix * node.modelMatrix()
     var uniforms = STKUniformsMesh(
-      modelViewMatrix: nodeModelMatrix, projectionMatrix: projectionMatrix, color: vector_float4(1, 1, 1, alpha))
+      modelViewMatrix: nodeModelMatrix, projectionMatrix: projectionMatrix, color: color)
     commandEncoder.setVertexBytes(
       &uniforms, length: MemoryLayout<STKUniformsMesh>.stride, index: Int(STKVertexBufferIndexUniforms.rawValue))
 
@@ -638,58 +587,6 @@ public class STKMeshRendererLines: STKShader {
 
     commandEncoder.popDebugGroup()
   }
-}
-
-public class STKScanMeshRenderer {
-  private var solid: STKMeshRendererSolid
-  private var wireframe: STKMeshRendererWireframe
-  
-  public init(view: MTKView, device: MTLDevice) {
-    solid = STKShaderManager.solid
-    wireframe = STKShaderManager.wireframe
-  }
-
-  public func render(
-    _ commandEncoder: MTLRenderCommandEncoder,
-    node: STKDrawableObject,
-    cameraPosition: float4x4,
-    projection: float4x4,
-    orientation: float4x4,
-    color: vector_float4,
-    style: STKMeshRenderingStyle
-  ) {
-    let modelViewMatrix = cameraPosition.inverse
-    let projectionMatrix = orientation * projection
-
-    switch style {
-    case .solid:
-      solid.render(
-        commandEncoder,
-        node: node,
-        worldModelMatrix: modelViewMatrix,
-        projectionMatrix: projectionMatrix,
-        color: color
-      )
-    case .wireframe:
-      wireframe.render(
-        commandEncoder,
-        node: node,
-        worldModelMatrix: modelViewMatrix,
-        projectionMatrix: projectionMatrix,
-        useXray: false,
-        color: color)
-    case .transparentSolid:
-      solid.render(
-        commandEncoder,
-        node: node,
-        worldModelMatrix: modelViewMatrix,
-        projectionMatrix: projectionMatrix,
-        color: color,
-        hideBackFaces: false
-      )
-    }
-  }
-
 }
 
 public class STKMeshRendererThickLines: STKShader {
@@ -723,20 +620,12 @@ public class STKMeshRendererThickLines: STKShader {
   public func render(
     _ commandEncoder: MTLRenderCommandEncoder,
     node: STKDrawableObject,
+    properties: STKShaderProperties,
     worldModelMatrix: float4x4,
     projectionMatrix: float4x4
   ) {
-    render(
-      commandEncoder, node: node, worldModelMatrix: worldModelMatrix, projectionMatrix: projectionMatrix, width: 3.0)
-  }
-
-  public func render(
-    _ commandEncoder: MTLRenderCommandEncoder,
-    node: STKDrawableObject,
-    worldModelMatrix: float4x4,
-    projectionMatrix: float4x4,
-    width: Float
-  ) {
+    let color = properties.baseColor
+    let pointSize = properties.pointSize
     guard node.vertexType is vector_float3,
       node.indexType is UInt32
     else {
@@ -755,9 +644,9 @@ public class STKMeshRendererThickLines: STKShader {
     }
 
     commandEncoder.pushDebugGroup("RenderThickLines")
-    commandEncoder.setRenderPipelineState(pipelineState)
     commandEncoder.setDepthStencilState(depthStencilState)
     commandEncoder.setCullMode(MTLCullMode.none)
+    commandEncoder.setRenderPipelineState(pipelineState)
 
     commandEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: Int(STKVertexAttrPosition.rawValue))
     commandEncoder.setVertexBuffer(colorsBuffer, offset: 0, index: Int(STKVertexAttrAddition.rawValue))
@@ -767,8 +656,8 @@ public class STKMeshRendererThickLines: STKShader {
     let indexCount = node.triangleCount()
     let nodeModelMatrix = worldModelMatrix * node.modelMatrix()
     var uniforms = STKUniformsThickLine(
-      modelViewMatrix: nodeModelMatrix, projectionMatrix: projectionMatrix, color: vector_float4(1, 1, 1, 1),
-      width: width)
+      modelViewMatrix: nodeModelMatrix, projectionMatrix: projectionMatrix, color: color,
+      width: pointSize) // Reuse pointSize for line width
     commandEncoder.setVertexBytes(
       &uniforms, length: MemoryLayout<STKUniformsThickLine>.stride, index: Int(STKVertexBufferIndexUniforms.rawValue))
 
