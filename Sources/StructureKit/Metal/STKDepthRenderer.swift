@@ -30,6 +30,47 @@ import Metal
 import MetalKit
 import StructureKitCTypes
 
+public enum STKDepthRenderingMode: UInt32 {
+  case colorOverlay = 0
+  case darkenMissing = 1
+  case globalColorOverlay = 2
+}
+
+public struct STKDepthColormap {
+  public static let standard: [simd_float4] = [simd_float4(1, 0, 0, 1), simd_float4(1, 1, 0, 1)]
+  
+  public static let rgbCube: [simd_float4] = {
+    let stops: [(pos: Float, color: simd_float4)] = [
+      (0.0, simd_float4(0, 0, 0, 1)),
+      (0.8 / 36.0, simd_float4(1, 0, 0, 1)),
+      (1.8 / 36.0, simd_float4(1, 1, 0, 1)),
+      (3.8 / 36.0, simd_float4(0, 1, 0, 1)),
+      (5.3 / 36.0, simd_float4(0, 1, 1, 1)),
+      (8.7 / 36.0, simd_float4(0, 0, 1, 1)),
+      (16.0 / 36.0, simd_float4(1, 0, 1, 1)),
+      (1.0, simd_float4(1, 1, 1, 1))
+    ]
+    
+    var colors = [simd_float4]()
+    let count = 256
+    for i in 0..<count {
+      let t = Float(i) / Float(count - 1)
+      var c = simd_float4(1, 1, 1, 1)
+      for j in 0..<(stops.count - 1) {
+        let left = stops[j]
+        let right = stops[j+1]
+        if t >= left.pos && t <= right.pos {
+          let localT = (t - left.pos) / (right.pos - left.pos)
+          c = left.color * (1.0 - localT) + right.color * localT
+          break
+        }
+      }
+      colors.append(c)
+    }
+    return colors
+  }()
+}
+
 // Draws various objects which require depth texture:
 // 1. the depth frame
 // 2. the cube
@@ -45,7 +86,8 @@ public class STKDepthRenderer {
   private var samplerState: MTLSamplerState
   private var device: MTLDevice
   private var intr: STKIntrinsics?
-  var depthRenderingColors = [simd_float4(1, 0, 0, 1), simd_float4(1, 1, 0, 1)] {  // red and yellow
+  
+  public var depthRenderingColors = STKDepthColormap.rgbCube {
     didSet { updateColorTexture() }
   }
 
@@ -152,7 +194,12 @@ public class STKDepthRenderer {
 
     let bytesPerRow: Int = depthRenderingColors.count * MemoryLayout<simd_float4>.stride
     let region = MTLRegionMake2D(0, 0, depthRenderingColors.count, 1)
-    textureColor?.replace(region: region, mipmapLevel: 0, withBytes: &depthRenderingColors, bytesPerRow: bytesPerRow)
+    
+    depthRenderingColors.withUnsafeBytes { ptr in
+      if let baseAddress = ptr.baseAddress {
+        textureColor?.replace(region: region, mipmapLevel: 0, withBytes: baseAddress, bytesPerRow: bytesPerRow)
+      }
+    }
   }
 
   public func uploadColorTextureFromDepth(_ depthFrame: STKDepthFrame) {
@@ -178,14 +225,16 @@ public class STKDepthRenderer {
     let region = MTLRegionMake2D(0, 0, Int(depthFrame.width), Int(depthFrame.height))
     textureDepth?.replace(region: region, mipmapLevel: 0, withBytes: depthMap!, bytesPerRow: bytesPerRow)
   }
-
-  public func renderDepthOverlay(
-    _ commandEncoder: MTLRenderCommandEncoder,
-    volumeSizeInMeters: simd_float3,
-    cameraPosition: float4x4,
-    textureOrientation: float4x4,
-    alpha: Float
-  ) {
+public func renderDepthOverlay(
+  _ commandEncoder: MTLRenderCommandEncoder,
+  cameraPosition: float4x4,
+  textureOrientation: float4x4,
+  cubeModelInv: float4x4,
+  depthMinMm: Float,
+  depthMaxMm: Float,
+  alpha: Float,
+  mode: STKDepthRenderingMode
+) {
     guard let texture = textureDepth,
       let intr = intr,
       let textureColor = textureColor
@@ -201,9 +250,6 @@ public class STKDepthRenderer {
     // move back to [0, 1] coordinates
     let projection =
       float4x4.makeTranslation(0.5, 0.5, 0) * textureOrientation * float4x4.makeTranslation(-0.5, -0.5, 0)
-    let (minDistM, maxDistM) = calcVisualizationDistance(
-      cameraPoint: cameraPosition.translation.xyz,
-      cubeSize: volumeSizeInMeters)
 
     let intrinsics = STKIntrinsicsMetal(
       cx: intr.cx, cy: intr.cy, fx: intr.fx, fy: intr.fy, width: UInt32(texture.width), height: UInt32(texture.height))
@@ -212,10 +258,11 @@ public class STKDepthRenderer {
       projection: projection,
       cameraPose: cameraPosition,
       cameraIntrinsics: intrinsics,
-      cubeModelInv: float4x4.makeScale(volumeSizeInMeters.x, volumeSizeInMeters.y, volumeSizeInMeters.z).inverse,
-      depthMin: minDistM * 1000,
-      depthMax: maxDistM * 1000,
-      alpha: alpha
+      cubeModelInv: cubeModelInv,
+      depthMinMm: depthMinMm,
+      depthMaxMm: depthMaxMm,
+      alpha: alpha,
+      renderingMode: mode.rawValue
     )
 
     commandEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
@@ -232,9 +279,10 @@ public class STKDepthRenderer {
   public func renderDepthFrame(
     _ commandEncoder: MTLRenderCommandEncoder,
     orientation: float4x4,
-    minDepth: Float,
-    maxDepth: Float,
-    alpha: Float = 1
+    minDepthMm: Float,
+    maxDepthMm: Float,
+    alpha: Float,
+    mode: STKDepthRenderingMode
   ) {
     guard let textureDepth = textureDepth,
       let textureColor = textureColor
@@ -244,7 +292,8 @@ public class STKDepthRenderer {
     commandEncoder.setRenderPipelineState(renderDepthFrameState)
 
     let projection = float4x4.makeTranslation(0.5, 0.5, 0) * orientation * float4x4.makeTranslation(-0.5, -0.5, 0)
-    var uniforms = STKUniformsDepthTexture(projection: projection, depthMin: minDepth, depthMax: maxDepth, alpha: alpha)
+    
+    var uniforms = STKUniformsDepthTexture(projection: projection, depthMinMm: minDepthMm, depthMaxMm: maxDepthMm, alpha: alpha, renderingMode: mode.rawValue)
     commandEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
     commandEncoder.setVertexBytes(&uniforms, length: MemoryLayout<STKUniformsDepthTexture>.stride, index: 1)
 

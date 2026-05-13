@@ -366,13 +366,44 @@ public class STKMetalRenderer: NSObject, STKRenderer {
   }
 
   public func renderHighlightedDepth(cameraPose: simd_float4x4, alpha: Float, textureOrientation: simd_float4x4) {
+    renderHighlightedDepth(cameraPose: cameraPose, alpha: alpha, textureOrientation: textureOrientation, mode: .colorOverlay)
+  }
+
+  public func renderHighlightedDepth(
+    cameraPose: simd_float4x4, 
+    alpha: Float, 
+    textureOrientation: simd_float4x4,
+    mode: STKDepthRenderingMode,
+    globalRangeMm: simd_float2? = nil
+  ) {
     guard let commandEncoder = _commandEncoder else { return }
+    
+    let minDistMm: Float
+    let maxDistMm: Float
+    let cubeModelInv: float4x4
+    
+    if let range = globalRangeMm {
+      minDistMm = range.x
+      maxDistMm = range.y
+      cubeModelInv = float4x4.identity // Dummy matrix since global mode bypasses cube test
+    } else {
+      let bounds = calcVisualizationDistance(
+        cameraPoint: cameraPose.translation.xyz,
+        cubeSize: _volumeSize)
+      minDistMm = bounds.0 * 1000.0
+      maxDistMm = bounds.1 * 1000.0
+      cubeModelInv = float4x4.makeScale(_volumeSize.x, _volumeSize.y, _volumeSize.z).inverse
+    }
+    
     _depthOverlayRenderer.renderDepthOverlay(
       commandEncoder,
-      volumeSizeInMeters: _volumeSize,
       cameraPosition: cameraPose,
       textureOrientation: textureOrientation,
-      alpha: alpha)
+      cubeModelInv: cubeModelInv,
+      depthMinMm: minDistMm,
+      depthMaxMm: maxDistMm,
+      alpha: alpha,
+      mode: mode)
   }
   
   public func renderHighlightedDepthBand(cameraPose: simd_float4x4, alpha: Float, textureOrientation: simd_float4x4) {
@@ -386,9 +417,19 @@ public class STKMetalRenderer: NSObject, STKRenderer {
   }
 
   public func renderDepthFrame(orientation textureOrientation: simd_float4x4, range: simd_float2) {
+    renderDepthFrame(orientation: textureOrientation, minDepthMm: range.x, maxDepthMm: range.y, alpha: 0.5, mode: .colorOverlay)
+  }
+
+  public func renderDepthFrame(
+    orientation textureOrientation: simd_float4x4,
+    minDepthMm: Float,
+    maxDepthMm: Float,
+    alpha: Float,
+    mode: STKDepthRenderingMode
+  ) {
     guard let commandEncoder = _commandEncoder else { return }
     _depthOverlayRenderer.renderDepthFrame(
-      commandEncoder, orientation: textureOrientation, minDepth: range.x, maxDepth: range.y, alpha: 0.5)
+      commandEncoder, orientation: textureOrientation, minDepthMm: minDepthMm, maxDepthMm: maxDepthMm, alpha: alpha, mode: mode)
   }
 
   public func renderARKitAnchors(cameraPose: simd_float4x4, orientation: simd_float4x4) {
