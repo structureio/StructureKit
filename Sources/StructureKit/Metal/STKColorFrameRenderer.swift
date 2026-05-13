@@ -67,6 +67,33 @@ public class STKColorFrameRenderer {
       pixelBuffer: imageBuffer, textureCache: textureCache, planeIndex: 1, pixelFormat: .rg8Unorm)
   }
 
+  func drawPoints(_ points: [simd_float2]) {
+    guard let textureY = textureY, let textureCbCr = textureCbCr else { return }
+    
+    // Pure green in YCbCr: Y ~ 150, Cb ~ 43, Cr ~ 21
+    let yVal: UInt8 = 150
+    let cbcrVal: [UInt8] = [43, 21]
+    
+    let w = 4
+    let h = 4
+    
+    let yBytes = [UInt8](repeating: yVal, count: w * h)
+    var cbcrBytes = [UInt8]()
+    for _ in 0..<(w/2 * h/2) {
+      cbcrBytes.append(contentsOf: cbcrVal)
+    }
+    
+    for pt in points {
+      let x = Int(pt.x) - w / 2
+      let y = Int(pt.y) - h / 2
+      
+      if x < 0 || y < 0 || x + w >= textureY.width || y + h >= textureY.height { continue }
+      
+      textureY.replace(region: MTLRegionMake2D(x, y, w, h), mipmapLevel: 0, withBytes: yBytes, bytesPerRow: w)
+      textureCbCr.replace(region: MTLRegionMake2D(x / 2, y / 2, w / 2, h / 2), mipmapLevel: 0, withBytes: cbcrBytes, bytesPerRow: w)
+    }
+  }
+
   func renderCameraImage(
     _ commandEncoder: MTLRenderCommandEncoder,
     orientation: float4x4

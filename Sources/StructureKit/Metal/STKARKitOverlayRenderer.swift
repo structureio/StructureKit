@@ -31,7 +31,7 @@ import MetalKit
 import StructureKitCTypes
 
 // Draws an ARKit face geometry as a white transparent mesh
-public class STKARKitOverlayRenderer {
+public class STKARKitOverlayRenderer: STKShader {
   var arkitToWorld = simd_float4x4.identity
   private var depthStencilARKitState: MTLDepthStencilState
   private var renderARKitState: MTLRenderPipelineState
@@ -91,6 +91,42 @@ public class STKARKitOverlayRenderer {
     commandEncoder.drawIndexedPrimitives(
       type: .triangle,
       indexCount: mesh.triangleCount() * 3,
+      indexType: .uint16,
+      indexBuffer: indexBuffer,
+      indexBufferOffset: 0)
+
+    commandEncoder.popDebugGroup()
+  }
+}
+
+extension STKARKitOverlayRenderer {
+  public func render(
+    _ commandEncoder: MTLRenderCommandEncoder,
+    node: STKDrawableObject,
+    properties: STKShaderProperties,
+    worldModelMatrix: float4x4,
+    projectionMatrix: float4x4
+  ) {
+    let color = properties.baseColor
+    guard let vertexBuffer = node.vertices(),
+      let indexBuffer = node.indices()
+    else { return }
+
+    commandEncoder.pushDebugGroup("RenderARKitGeometry")
+    commandEncoder.setDepthStencilState(depthStencilARKitState)
+    commandEncoder.setRenderPipelineState(renderARKitState)
+
+    commandEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: Int(STKVertexAttrPosition.rawValue))
+
+    var uniforms = STKUniformsMesh(
+      modelViewMatrix: float4x4.makeRotationZ(Float.pi) * worldModelMatrix * arkitToWorld,
+      projectionMatrix: projectionMatrix,
+      color: color)
+    commandEncoder.setVertexBytes(&uniforms, length: MemoryLayout<STKUniformsMesh>.stride, index: 1)
+
+    commandEncoder.drawIndexedPrimitives(
+      type: .triangle,
+      indexCount: node.triangleCount() * 3,
       indexType: .uint16,
       indexBuffer: indexBuffer,
       indexBufferOffset: 0)

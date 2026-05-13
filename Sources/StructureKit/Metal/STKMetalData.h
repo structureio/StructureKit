@@ -57,9 +57,10 @@ struct STKUniformsColorTexture
 struct STKUniformsDepthTexture
 {
     matrix_float4x4 projection;
-    float depthMin;
-    float depthMax;
+    float depthMinMm;
+    float depthMaxMm;
     float alpha;
+    uint32_t renderingMode;
 };
 
 struct STKUniformsDepthOverlay
@@ -68,9 +69,10 @@ struct STKUniformsDepthOverlay
     matrix_float4x4 cameraPose;
     struct STKIntrinsicsMetal cameraIntrinsics;
     matrix_float4x4 cubeModelInv;
-    float depthMin;
-    float depthMax;
+    float depthMinMm;
+    float depthMaxMm;
     float alpha;
+    uint32_t renderingMode;
 };
 
 struct STKUniformsDepthBandOverlay

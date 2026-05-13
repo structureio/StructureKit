@@ -58,19 +58,26 @@ public class STKMeshBuffers: STKDrawableObject {
   }
 
   fileprivate func clear() {
-    vertexBuffer = nil
-    indexBuffer = nil
-    lineBuffer = nil
-    normalBuffer = nil
-    colorBuffer = nil
-    texcoordBuffer = nil
-    textureYinternal = nil
-    textureCbCrinternal = nil
     nTriangle = 0
     nVertex = 0
     nLine = 0
     self.mesh = nil
     arkitMesh = nil
+  }
+
+  private func updateBuffer(_ buffer: inout MTLBuffer?, bytes: UnsafeRawPointer, length: Int) {
+    guard length > 0 else {
+      buffer = nil
+      return
+    }
+    if let existing = buffer, existing.length >= length {
+      existing.contents().copyMemory(from: bytes, byteCount: length)
+    } else {
+      let newCapacity = Swift.max(length, Int(Double(buffer?.length ?? 0) * 1.5))
+      let newBuffer = device.makeBuffer(length: newCapacity, options: [.storageModeShared])
+      newBuffer?.contents().copyMemory(from: bytes, byteCount: length)
+      buffer = newBuffer
+    }
   }
 
   public func updateMesh(_ mesh: STKMesh) {
@@ -88,8 +95,7 @@ public class STKMeshBuffers: STKDrawableObject {
     nTriangle = mesh.triangleCount
     nVertex = mesh.vertices.count
 
-    vertexBuffer = device.makeBuffer(
-      bytes: mesh.vertices, length: mesh.vertices.count * MemoryLayout<vector_float3>.stride, options: [])
+    updateBuffer(&vertexBuffer, bytes: mesh.vertices, length: mesh.vertices.count * MemoryLayout<vector_float3>.stride)
 
     // convert Int16 to UInt16
     var indices = [UInt16](repeating: 0, count: mesh.triangleIndices.count)
@@ -98,7 +104,14 @@ public class STKMeshBuffers: STKDrawableObject {
     }
 
     let indexSize = mesh.triangleIndices.count * MemoryLayout<UInt16>.stride
-    indexBuffer = device.makeBuffer(bytes: indices, length: indexSize, options: [])
+    updateBuffer(&indexBuffer, bytes: indices, length: indexSize)
+
+    normalBuffer = nil
+    colorBuffer = nil
+    texcoordBuffer = nil
+    lineBuffer = nil
+    textureYinternal = nil
+    textureCbCrinternal = nil
   }
 
   public func vertexArray() -> [simd_float3]? {
@@ -144,14 +157,6 @@ public class STKMeshBuffers: STKDrawableObject {
   }
 
   public func updateBuffers() {
-    vertexBuffer = nil
-    indexBuffer = nil
-    lineBuffer = nil
-    normalBuffer = nil
-    colorBuffer = nil
-    texcoordBuffer = nil
-    textureYinternal = nil
-    textureCbCrinternal = nil
     nTriangle = 0
     nVertex = 0
     nLine = 0
@@ -162,30 +167,38 @@ public class STKMeshBuffers: STKDrawableObject {
 
       guard mesh.number(ofMeshVertices: 0) > 0 else { return }
       let numVertices: Int = Int(mesh.number(ofMeshVertices: Int32(0)))
-      vertexBuffer = device.makeBuffer(
-        bytes: mesh.meshVertices(0)!, length: numVertices * MemoryLayout<GLKVector3>.stride, options: [])
+      updateBuffer(&vertexBuffer, bytes: mesh.meshVertices(0)!, length: numVertices * MemoryLayout<GLKVector3>.stride)
 
       if mesh.hasPerVertexNormals(), let bytes = mesh.meshPerVertexNormals(0) {
-        normalBuffer = device.makeBuffer(
-          bytes: bytes, length: numVertices * MemoryLayout<GLKVector3>.stride, options: [])
+        updateBuffer(&normalBuffer, bytes: bytes, length: numVertices * MemoryLayout<GLKVector3>.stride)
+      } else {
+        normalBuffer = nil
       }
+
       if mesh.hasPerVertexColors(), let bytes = mesh.meshPerVertexColors(0) {
-        colorBuffer = device.makeBuffer(
-          bytes: bytes, length: numVertices * MemoryLayout<GLKVector3>.stride, options: [])
+        updateBuffer(&colorBuffer, bytes: bytes, length: numVertices * MemoryLayout<GLKVector3>.stride)
+      } else {
+        colorBuffer = nil
       }
+
       if mesh.hasPerVertexUVTextureCoords(), let bytes = mesh.meshPerVertexUVTextureCoords(0) {
-        texcoordBuffer = device.makeBuffer(
-          bytes: bytes, length: numVertices * MemoryLayout<GLKVector2>.stride, options: [])
+        updateBuffer(&texcoordBuffer, bytes: bytes, length: numVertices * MemoryLayout<GLKVector2>.stride)
+      } else {
+        texcoordBuffer = nil
       }
 
       nLine = Int(mesh.number(ofMeshLines: 0))
       if nLine > 0, let bytes = mesh.meshLines(0) {
-        lineBuffer = device.makeBuffer(bytes: bytes, length: nLine * MemoryLayout<UInt32>.stride * 2, options: [])
+        updateBuffer(&lineBuffer, bytes: bytes, length: nLine * MemoryLayout<UInt32>.stride * 2)
+      } else {
+        lineBuffer = nil
       }
 
       let indexSize = Int(mesh.number(ofMeshFaces: Int32(0))) * MemoryLayout<UInt32>.stride * 3
       if indexSize > 0, let bytes = mesh.meshFaces(0) {
-        indexBuffer = device.makeBuffer(bytes: bytes, length: indexSize, options: [])
+        updateBuffer(&indexBuffer, bytes: bytes, length: indexSize)
+      } else {
+        indexBuffer = nil
       }
 
       nTriangle = Int(mesh.number(ofMeshFaces: 0))
@@ -197,7 +210,19 @@ public class STKMeshBuffers: STKDrawableObject {
           pixelBuffer: pixelBuffer, textureCache: textureCache, planeIndex: 0, pixelFormat: .r8Unorm)
         textureCbCrinternal = try! makeTexture(
           pixelBuffer: pixelBuffer, textureCache: textureCache, planeIndex: 1, pixelFormat: .rg8Unorm)
+      } else {
+        textureYinternal = nil
+        textureCbCrinternal = nil
       }
+    } else {
+      vertexBuffer = nil
+      indexBuffer = nil
+      lineBuffer = nil
+      normalBuffer = nil
+      colorBuffer = nil
+      texcoordBuffer = nil
+      textureYinternal = nil
+      textureCbCrinternal = nil
     }
   }
 
@@ -241,12 +266,12 @@ extension STKMeshBuffers {
     // make type fixed in the drawable ?
 
     nVertex = polyline.count
-    vertexBuffer = device.makeBuffer(
-      bytes: polyline, length: polyline.count * MemoryLayout<vector_float3>.stride, options: [])
+    updateBuffer(&vertexBuffer, bytes: polyline, length: polyline.count * MemoryLayout<vector_float3>.stride)
 
     if colors.count == polyline.count {
-      colorBuffer = device.makeBuffer(
-        bytes: colors, length: colors.count * MemoryLayout<vector_float3>.stride, options: [])
+      updateBuffer(&colorBuffer, bytes: colors, length: colors.count * MemoryLayout<vector_float3>.stride)
+    } else {
+      colorBuffer = nil
     }
 
     nLine = polyline.count - 1
@@ -259,9 +284,14 @@ extension STKMeshBuffers {
         nLine += 1
         segmentIndices.append(vector_uint2(x: UInt32(polyline.count - 1), y: 0))
       }
-      lineBuffer = device.makeBuffer(
-        bytes: segmentIndices, length: nLine * MemoryLayout<UInt32>.stride * 2, options: [])
+      updateBuffer(&lineBuffer, bytes: segmentIndices, length: nLine * MemoryLayout<UInt32>.stride * 2)
+    } else {
+      lineBuffer = nil
     }
+
+    normalBuffer = nil
+    indexBuffer = nil
+    texcoordBuffer = nil
   }
 
   public func update(thickLine: [vector_float3], colors: [vector_float3]) {
@@ -280,8 +310,7 @@ extension STKMeshBuffers {
     // ----\|/
     let vertices: [vector_float3] = thickLine.flatMap { p in [p, p, p, p] }
     nVertex = vertices.count
-    vertexBuffer = device.makeBuffer(
-      bytes: vertices, length: vertices.count * MemoryLayout<vector_float3>.stride, options: [])
+    updateBuffer(&vertexBuffer, bytes: vertices, length: vertices.count * MemoryLayout<vector_float3>.stride)
 
     // use normals buffers for line directions..
     var lineDir: [vector_float3] = []
@@ -296,21 +325,24 @@ extension STKMeshBuffers {
       lineDir[i * 4 + 1] = lineDir[(i - 1) * 4 + 3]
     }
 
-    normalBuffer = device.makeBuffer(
-      bytes: lineDir, length: lineDir.count * MemoryLayout<vector_float3>.stride, options: [])
+    updateBuffer(&normalBuffer, bytes: lineDir, length: lineDir.count * MemoryLayout<vector_float3>.stride)
 
     // colors
     if colors.count == thickLine.count {
       let _colors: [vector_float3] = colors.flatMap { p in [p, p, p, p] }
-      colorBuffer = device.makeBuffer(
-        bytes: _colors, length: _colors.count * MemoryLayout<vector_float3>.stride, options: [])
+      updateBuffer(&colorBuffer, bytes: _colors, length: _colors.count * MemoryLayout<vector_float3>.stride)
+    } else {
+      colorBuffer = nil
     }
 
     // indices
     let indices = Array((0..<UInt32(vertices.count)))
 
     nTriangle = indices.count
-    indexBuffer = device.makeBuffer(bytes: indices, length: indices.count * MemoryLayout<UInt32>.stride, options: [])
+    updateBuffer(&indexBuffer, bytes: indices, length: indices.count * MemoryLayout<UInt32>.stride)
+
+    lineBuffer = nil
+    texcoordBuffer = nil
   }
   
   public func updateMesh(vertices: [vector_float3], colors: [vector_float3] = [], indices:[UInt32] = []) {
@@ -328,8 +360,7 @@ extension STKMeshBuffers {
     }
     
     nVertex = verticesGLK.count
-    vertexBuffer = device.makeBuffer(
-      bytes: verticesGLK, length: verticesGLK.count * MemoryLayout<GLKVector3>.stride, options: [])
+    updateBuffer(&vertexBuffer, bytes: verticesGLK, length: verticesGLK.count * MemoryLayout<GLKVector3>.stride)
     
     if colors.count == vertices.count {
       var colorsGLK: [GLKVector3] = []
@@ -337,15 +368,21 @@ extension STKMeshBuffers {
         colorsGLK.append(GLKVector3Make(Float(v.x), Float(v.y), Float(v.z)))
       }
       
-      colorBuffer = device.makeBuffer(
-        bytes: colorsGLK, length: colorsGLK.count * MemoryLayout<GLKVector3>.stride, options: [])
+      updateBuffer(&colorBuffer, bytes: colorsGLK, length: colorsGLK.count * MemoryLayout<GLKVector3>.stride)
+    } else {
+      colorBuffer = nil
     }
     
     if !indices.isEmpty && indices.count % 3 == 0 {
       nTriangle = indices.count / 3
-      indexBuffer = device.makeBuffer(bytes: indices, length: indices.count * MemoryLayout<UInt32>.stride, options: [])
+      updateBuffer(&indexBuffer, bytes: indices, length: indices.count * MemoryLayout<UInt32>.stride)
+    } else {
+      indexBuffer = nil
     }
     
+    normalBuffer = nil
+    lineBuffer = nil
+    texcoordBuffer = nil
   }
   
   public func update(cloud: [vector_float3], colors: [vector_float3]) {

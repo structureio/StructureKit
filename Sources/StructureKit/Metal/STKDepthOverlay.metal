@@ -55,15 +55,40 @@ fragment float4 fragmentDepthOverlay(
     sampler sampler2D [[sampler(0)]])
 {
     // depth udefined
-    const float depth = texDepth.sample(sampler2D, interpolated.texCoord).r;
-    if (isnan(depth))
+    const float depthMm = texDepth.sample(sampler2D, interpolated.texCoord).r;
+
+    if (uniforms.renderingMode == 1) { // darkenMissing
+        if (isnan(depthMm) || depthMm <= 0)
+            return float4(0, 0, 0, uniforms.alpha); // Darken invalid depth globally
+            
+        // If it's valid depth, check if it falls inside the cube
+        const auto intrinsics = uniforms.cameraIntrinsics;
+        const float u = interpolated.texCoord.x * intrinsics.width;
+        const float v = interpolated.texCoord.y * intrinsics.height;
+        const float depthM = depthMm / 1000;
+        const float4 cameraPoint(
+            depthM * (u - intrinsics.cx) / intrinsics.fx,
+            depthM * (v - intrinsics.cy) / intrinsics.fy,
+            depthM,
+            1);
+        const float4 worldPoint = uniforms.cameraPose * cameraPoint;
+        const float4 cubePoint = uniforms.cubeModelInv * worldPoint;
+
+        // outside the box
+        if (cubePoint.x < 0 || cubePoint.x > 1 || cubePoint.y < 0 || cubePoint.y > 1 || cubePoint.z < 0 || cubePoint.z > 1)
+            return float4(0, 0, 0, uniforms.alpha); // Darken outside the cube
+            
+        return float4(0); // Transparent inside the cube
+    }
+
+    if (isnan(depthMm))
         return float4(0);
 
     // calculate position of the depth pixel in the world CS using intrinsics
     const auto intrinsics = uniforms.cameraIntrinsics;
     const float u = interpolated.texCoord.x * intrinsics.width;
     const float v = interpolated.texCoord.y * intrinsics.height;
-    const float depthM = depth / 1000;
+    const float depthM = depthMm / 1000;
     const float4 cameraPoint(
         depthM * (u - intrinsics.cx) / intrinsics.fx,
         depthM * (v - intrinsics.cy) / intrinsics.fy,
@@ -84,7 +109,7 @@ fragment float4 fragmentDepthOverlay(
         return float4(0);
 
     // calculate the depth color
-    float4 finalColor = calcDepthColor(depth, float2(uniforms.depthMin, uniforms.depthMax), colors);
+    float4 finalColor = calcDepthColor(depthMm, float2(uniforms.depthMinMm, uniforms.depthMaxMm), colors);
     finalColor.w = uniforms.alpha;
     return finalColor;
 }

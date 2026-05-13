@@ -56,14 +56,21 @@ fragment float4 fragmentDepthFrame(
     sampler sampler2D [[sampler(0)]],
     const device STKUniformsDepthTexture& uniforms [[buffer(0)]])
 {
-    const float depth = depthMap.sample(sampler2D, interpolated.texCoord).r;
-    if (isnan(depth))
-        return float4(0);
-    if (depth < uniforms.depthMin || depth > uniforms.depthMax)
+    const float depthMm = depthMap.sample(sampler2D, interpolated.texCoord).r;
+    bool hasDepth = !isnan(depthMm) && depthMm > 0 && depthMm >= uniforms.depthMinMm && depthMm <= uniforms.depthMaxMm;
+
+    if (uniforms.renderingMode == 1) { // darkenMissing
+        if (!hasDepth) {
+            return float4(0, 0, 0, uniforms.alpha); // Darken out of bounds
+        }
+        return float4(0); // Transparent where depth is valid
+    }
+
+    if (!hasDepth)
         return float4(0);
 
     // calculate the depth color
-    float4 finalColor = calcDepthColor(depth, float2(uniforms.depthMin, uniforms.depthMax), colors);
+    float4 finalColor = calcDepthColor(depthMm, float2(uniforms.depthMinMm, uniforms.depthMaxMm), colors);
     finalColor.w = uniforms.alpha;
     return finalColor;
 }
