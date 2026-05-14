@@ -474,17 +474,18 @@ public class STKMetalRenderer: NSObject, STKRenderer {
   private func render(node: STKSceneNode, parentTransform: float4x4, projection: float4x4) {
     guard node.isVisible else { return }
     let worldTransform = parentTransform * node.localTransform
-    
+
     let mesh = node.buffer
-    let material = node.material
-    let shader = material.shaderID.getShader()
-    shader.render(_commandEncoder!, node: mesh, properties: material.properties, worldModelMatrix: worldTransform, projectionMatrix: projection)
-    
+    if mesh.vertexCount() > 0 {
+      let material = node.material
+      let shader = material.shaderID.getShader()
+      shader.render(_commandEncoder!, node: mesh, properties: material.properties, worldModelMatrix: worldTransform, projectionMatrix: projection)
+    }
+
     for child in node.children {
       render(node: child, parentTransform: worldTransform, projection: projection)
     }
   }
-
   public func findNode(id: String) -> STKSceneNode? {
     return scene.findNode(id: id)
   }
