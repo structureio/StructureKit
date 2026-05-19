@@ -366,7 +366,7 @@ public class STKMetalRenderer: NSObject, STKRenderer {
   }
 
   public func renderHighlightedDepth(cameraPose: simd_float4x4, alpha: Float, textureOrientation: simd_float4x4) {
-    renderHighlightedDepth(cameraPose: cameraPose, alpha: alpha, textureOrientation: textureOrientation, mode: .colorOverlay)
+    renderHighlightedDepth(cameraPose: cameraPose, alpha: alpha, textureOrientation: textureOrientation, mode: .colorOverlay, outlineColor: simd_float4(0, 0, 0, 1))
   }
 
   public func renderHighlightedDepth(
@@ -374,7 +374,8 @@ public class STKMetalRenderer: NSObject, STKRenderer {
     alpha: Float, 
     textureOrientation: simd_float4x4,
     mode: STKDepthRenderingMode,
-    globalRangeMm: simd_float2? = nil
+    globalRangeMm: simd_float2? = nil,
+    outlineColor: simd_float4 = simd_float4(0, 0, 0, 1)
   ) {
     guard let commandEncoder = _commandEncoder else { return }
     
@@ -403,7 +404,8 @@ public class STKMetalRenderer: NSObject, STKRenderer {
       depthMinMm: minDistMm,
       depthMaxMm: maxDistMm,
       alpha: alpha,
-      mode: mode)
+      mode: mode,
+      outlineColor: outlineColor)
   }
   
   public func renderHighlightedDepthBand(cameraPose: simd_float4x4, alpha: Float, textureOrientation: simd_float4x4) {

@@ -73,6 +73,7 @@ struct STKUniformsDepthOverlay
     float depthMaxMm;
     float alpha;
     uint32_t renderingMode;
+    vector_float4 outlineColor;
 };
 
 struct STKUniformsDepthBandOverlay

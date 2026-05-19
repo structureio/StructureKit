@@ -119,7 +119,16 @@ public class STKDepthRenderer {
     let dataSize = vertexData.count * MemoryLayout.size(ofValue: vertexData[0])
     vertexBuffer = device.makeBuffer(bytes: vertexData, length: dataSize, options: [])!
 
-    samplerState = makeDefaultSampler(device)
+    let samplerDescriptor = MTLSamplerDescriptor()
+    samplerDescriptor.minFilter = .linear
+    samplerDescriptor.magFilter = .linear
+    samplerDescriptor.mipFilter = .notMipmapped
+    samplerDescriptor.maxAnisotropy = 1
+    samplerDescriptor.sAddressMode = .clampToEdge
+    samplerDescriptor.tAddressMode = .clampToEdge
+    samplerDescriptor.rAddressMode = .clampToEdge
+    samplerDescriptor.normalizedCoordinates = true
+    samplerState = device.makeSamplerState(descriptor: samplerDescriptor)!
 
     let pipelineDepthFrameDescriptor = MTLRenderPipelineDescriptor()
     pipelineDepthFrameDescriptor.sampleCount = 1
@@ -233,7 +242,8 @@ public func renderDepthOverlay(
   depthMinMm: Float,
   depthMaxMm: Float,
   alpha: Float,
-  mode: STKDepthRenderingMode
+  mode: STKDepthRenderingMode,
+  outlineColor: simd_float4
 ) {
     guard let texture = textureDepth,
       let intr = intr,
@@ -262,7 +272,8 @@ public func renderDepthOverlay(
       depthMinMm: depthMinMm,
       depthMaxMm: depthMaxMm,
       alpha: alpha,
-      renderingMode: mode.rawValue
+      renderingMode: mode.rawValue,
+      outlineColor: outlineColor
     )
 
     commandEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
