@@ -54,35 +54,14 @@ fragment float4 fragmentDepthOverlay(
     texture2d<float> colors [[texture(1)]],
     sampler sampler2D [[sampler(0)]])
 {
-    // depth udefined
     const float depthMm = texDepth.sample(sampler2D, interpolated.texCoord).r;
 
-    if (uniforms.renderingMode == 1) { // darkenMissing
-        if (isnan(depthMm) || depthMm <= 0)
+    if (isnan(depthMm) || depthMm <= 0) {
+        if (uniforms.renderingMode == 1) { // darkenMissing
             return float4(0, 0, 0, uniforms.alpha); // Darken invalid depth globally
-            
-        // If it's valid depth, check if it falls inside the cube
-        const auto intrinsics = uniforms.cameraIntrinsics;
-        const float u = interpolated.texCoord.x * intrinsics.width;
-        const float v = interpolated.texCoord.y * intrinsics.height;
-        const float depthM = depthMm / 1000;
-        const float4 cameraPoint(
-            depthM * (u - intrinsics.cx) / intrinsics.fx,
-            depthM * (v - intrinsics.cy) / intrinsics.fy,
-            depthM,
-            1);
-        const float4 worldPoint = uniforms.cameraPose * cameraPoint;
-        const float4 cubePoint = uniforms.cubeModelInv * worldPoint;
-
-        // outside the box
-        if (cubePoint.x < 0 || cubePoint.x > 1 || cubePoint.y < 0 || cubePoint.y > 1 || cubePoint.z < 0 || cubePoint.z > 1)
-            return float4(0, 0, 0, uniforms.alpha); // Darken outside the cube
-            
-        return float4(0); // Transparent inside the cube
-    }
-
-    if (isnan(depthMm))
+        }
         return float4(0);
+    }
 
     // calculate position of the depth pixel in the world CS using intrinsics
     const auto intrinsics = uniforms.cameraIntrinsics;
@@ -97,19 +76,44 @@ fragment float4 fragmentDepthOverlay(
     const float4 worldPoint = uniforms.cameraPose * cameraPoint;
     const float4 cubePoint = uniforms.cubeModelInv * worldPoint;
 
-    // the cube borders
-    //  const float eps1 = 0.003;
-    //  if((abs(cubePoint.x) < eps1 || abs(cubePoint.x - 1) < eps1)
-    //    || (abs(cubePoint.y) < eps1 || abs(cubePoint.y - 1) < eps1)
-    //    || (abs(cubePoint.z) < eps1 || abs(cubePoint.z - 1) < eps1))
-    //    return float4(0, 1, 0, uniforms.alpha);
+    // Handle outside the box
+    bool outsideBox = cubePoint.x < 0 || cubePoint.x > 1 || cubePoint.y < 0 || cubePoint.y > 1 || cubePoint.z < 0 || cubePoint.z > 1;
 
-    // outside the box
-    if (cubePoint.x < 0 || cubePoint.x > 1 || cubePoint.y < 0 || cubePoint.y > 1 || cubePoint.z < 0 || cubePoint.z > 1)
-        return float4(0);
+    float4 baseColor = float4(0);
 
-    // calculate the depth color
-    float4 finalColor = calcDepthColor(depthMm, float2(uniforms.depthMinMm, uniforms.depthMaxMm), colors);
-    finalColor.w = uniforms.alpha;
-    return finalColor;
+    if (uniforms.renderingMode == 1) { // darkenMissing
+        if (outsideBox) {
+            baseColor = float4(0, 0, 0, uniforms.alpha); // Darken outside the cube
+        }
+    } else {
+        if (!outsideBox) {
+            baseColor = calcDepthColor(depthMm, float2(uniforms.depthMinMm, uniforms.depthMaxMm), colors);
+            baseColor.w = uniforms.alpha;
+        }
+    }
+
+    // the anti-aliased cube borders
+    if (uniforms.outlineColor.a > 0.0 && !outsideBox) {
+        float minX = min(cubePoint.x, 1.0 - cubePoint.x);
+        float minY = min(cubePoint.y, 1.0 - cubePoint.y);
+        float minZ = min(cubePoint.z, 1.0 - cubePoint.z);
+        float distToEdge = min(min(minX, minY), minZ);
+        
+        float lineThickness = 0.005;
+        float feather = 0.004; 
+        
+        if (distToEdge < lineThickness) {
+            float outlineIntensity = 1.0 - smoothstep(lineThickness - feather, lineThickness, distToEdge);
+            float topA = uniforms.outlineColor.a * uniforms.alpha * outlineIntensity;
+            float botA = baseColor.w;
+            
+            float outA = topA + botA * (1.0 - topA);
+            if (outA > 0.0) {
+                baseColor.xyz = (uniforms.outlineColor.rgb * topA + baseColor.xyz * botA * (1.0 - topA)) / outA;
+            }
+            baseColor.w = outA;
+        }
+    }
+
+    return baseColor;
 }

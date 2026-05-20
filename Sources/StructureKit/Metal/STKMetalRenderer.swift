@@ -366,7 +366,7 @@ public class STKMetalRenderer: NSObject, STKRenderer {
   }
 
   public func renderHighlightedDepth(cameraPose: simd_float4x4, alpha: Float, textureOrientation: simd_float4x4) {
-    renderHighlightedDepth(cameraPose: cameraPose, alpha: alpha, textureOrientation: textureOrientation, mode: .colorOverlay)
+    renderHighlightedDepth(cameraPose: cameraPose, alpha: alpha, textureOrientation: textureOrientation, mode: .colorOverlay, outlineColor: simd_float4(0, 0, 0, 1))
   }
 
   public func renderHighlightedDepth(
@@ -374,7 +374,8 @@ public class STKMetalRenderer: NSObject, STKRenderer {
     alpha: Float, 
     textureOrientation: simd_float4x4,
     mode: STKDepthRenderingMode,
-    globalRangeMm: simd_float2? = nil
+    globalRangeMm: simd_float2? = nil,
+    outlineColor: simd_float4 = simd_float4(0, 0, 0, 1)
   ) {
     guard let commandEncoder = _commandEncoder else { return }
     
@@ -403,7 +404,8 @@ public class STKMetalRenderer: NSObject, STKRenderer {
       depthMinMm: minDistMm,
       depthMaxMm: maxDistMm,
       alpha: alpha,
-      mode: mode)
+      mode: mode,
+      outlineColor: outlineColor)
   }
   
   public func renderHighlightedDepthBand(cameraPose: simd_float4x4, alpha: Float, textureOrientation: simd_float4x4) {
@@ -474,17 +476,18 @@ public class STKMetalRenderer: NSObject, STKRenderer {
   private func render(node: STKSceneNode, parentTransform: float4x4, projection: float4x4) {
     guard node.isVisible else { return }
     let worldTransform = parentTransform * node.localTransform
-    
+
     let mesh = node.buffer
-    let material = node.material
-    let shader = material.shaderID.getShader()
-    shader.render(_commandEncoder!, node: mesh, properties: material.properties, worldModelMatrix: worldTransform, projectionMatrix: projection)
-    
+    if mesh.vertexCount() > 0 {
+      let material = node.material
+      let shader = material.shaderID.getShader()
+      shader.render(_commandEncoder!, node: mesh, properties: material.properties, worldModelMatrix: worldTransform, projectionMatrix: projection)
+    }
+
     for child in node.children {
       render(node: child, parentTransform: worldTransform, projection: projection)
     }
   }
-
   public func findNode(id: String) -> STKSceneNode? {
     return scene.findNode(id: id)
   }
