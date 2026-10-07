@@ -145,6 +145,11 @@ protocol STKRenderer: AnyObject {
   Access to the Command Encoder of the current pipeline. Available between calls to startRendering() and presentDrawable()
   */
   var commandEncoder: MTLRenderCommandEncoder? { get }
+
+  /**
+  Access to the Command Buffer of the current pipeline. Available between calls to startRendering() and presentDrawable()
+  */
+  var commandBuffer: MTLCommandBuffer? { get }
 }
 
 // Implementation of STKRenderer protocol. Calculates viewport and projection matrix and stores the metal buffers to render meshes.
@@ -203,6 +208,7 @@ public class STKMetalRenderer: NSObject, STKRenderer {
   }
 
   public var commandEncoder: MTLRenderCommandEncoder? { _commandEncoder }
+  public var commandBuffer: MTLCommandBuffer? { _commandBuffer }
 
   public init(view: MTKView, device: MTLDevice, mesh: STKMesh) {
     _mtkView = view
